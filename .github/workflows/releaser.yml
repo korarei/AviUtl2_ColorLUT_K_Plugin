@@ -1,6 +1,7 @@
 name: releaser
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - '*'
@@ -21,26 +22,13 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v6
+      with:
+        submodules: recursive
 
     - name: Setup MSVC (x64)
       uses: ilammy/msvc-dev-cmd@v1
       with:
         arch: x64
-
-    - name: Download sdk
-      run: |
-        Invoke-WebRequest -Uri https://spring-fragrance.mints.ne.jp/aviutl/aviutl2_sdk.zip -OutFile aviutl2_sdk.zip
-        Expand-Archive -Path aviutl2_sdk.zip -DestinationPath src/aviutl2_sdk -Force
-        Remove-Item aviutl2_sdk.zip -Force
-
-    - name: Convert file encoding
-      run: |
-        Get-ChildItem -Path src/aviutl2_sdk -Filter "*.h" -Recurse | ForEach-Object {
-          $file = $_.FullName
-          $content = Get-Content $file -Raw -Encoding "shift_jis"
-          $content = $content -replace "`r`n", "`n"
-          Set-Content $file -Value $content -Encoding utf8
-        }
 
     - name: Build
       working-directory: src

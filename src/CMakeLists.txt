@@ -4,7 +4,7 @@ set(VERSION "0.1.0" CACHE STRING "Project version")
 project(ColorLUT_K VERSION ${VERSION} LANGUAGES CXX)
 
 # Path settings.
-set(SDK_DIR "${CMAKE_SOURCE_DIR}/aviutl2_sdk")
+set(AVIUTL2_SDK "${CMAKE_SOURCE_DIR}/external/aviutl2_sdk/include/aviutl2_sdk")
 
 # Main target definition.
 add_library(${PROJECT_NAME} SHARED
@@ -15,7 +15,7 @@ add_library(${PROJECT_NAME} SHARED
 
 # Include directories.
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${SDK_DIR}
+    ${AVIUTL2_SDK}
 )
 
 # Library Link.
