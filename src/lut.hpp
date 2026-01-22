@@ -12,7 +12,7 @@ public:
     void setup(ID3D11Texture2D *texture);
 
     void create_texture2d(ID3D11Texture2D **texture) const;
-    void create_bitmap(ID3D11Texture2D *texture, D2D1_BITMAP_OPTIONS options, ID2D1Bitmap1 **bitmap) const;
+    void create_bitmap(ID3D11Texture2D *texture, D2D1_BITMAP_OPTIONS options, ID2D1Bitmap1 **bmp) const;
     [[nodiscard]] bool create_effect(const std::wstring &path, float mix, ID2D1Bitmap1 *bmp, ID2D1Effect **effect);
 
     void draw(ID2D1Image *target, ID2D1Effect *effect) const;

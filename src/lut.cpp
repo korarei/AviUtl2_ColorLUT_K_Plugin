@@ -7,6 +7,13 @@
 #include <sstream>
 #include <stdexcept>
 
+#define HR(expr)                             \
+    do {                                     \
+        HRESULT hr__ = (expr);               \
+        if (FAILED(hr__))                    \
+            throw std::runtime_error(#expr); \
+    } while (0)
+
 void
 ColorLUT::setup(ID3D11Texture2D *texture) {
     ComPtr<ID3D11Device> device;
@@ -19,25 +26,14 @@ ColorLUT::setup(ID3D11Texture2D *texture) {
     d3d_device = device;
 
     ComPtr<IDXGIDevice> dxgi_device;
-    if (FAILED(d3d_device.As(&dxgi_device)))
-        throw std::runtime_error("As IDXGIDevice failed");
+    HR(d3d_device.As(&dxgi_device));
 
     ComPtr<ID2D1Factory3> d2d_factory;
-    if (FAILED(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, IID_PPV_ARGS(&d2d_factory))))
-        throw std::runtime_error("D2D1CreateFactory failed");
+    HR(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, IID_PPV_ARGS(&d2d_factory)));
 
-    d2d_device.Reset();
-    d2d_context.Reset();
-    cross_fade.Reset();
-
-    if (FAILED(d2d_factory->CreateDevice(dxgi_device.Get(), &d2d_device)))
-        throw std::runtime_error("ID2D1Factory3::CreateDevice failed");
-
-    if (FAILED(d2d_device->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, &d2d_context)))
-        throw std::runtime_error("ID2D1Device2::CreateDeviceContext failed");
-
-    if (FAILED(d2d_context->CreateEffect(CLSID_D2D1CrossFade, &cross_fade)))
-        throw std::runtime_error("ID2D1DeviceContext::CreateEffect (CrossFade) failed");
+    HR(d2d_factory->CreateDevice(dxgi_device.Get(), d2d_device.ReleaseAndGetAddressOf()));
+    HR(d2d_device->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, d2d_context.ReleaseAndGetAddressOf()));
+    HR(d2d_context->CreateEffect(CLSID_D2D1CrossFade, cross_fade.ReleaseAndGetAddressOf()));
 
     std::unordered_map<std::wstring, LUT>().swap(cache);
 }
@@ -46,12 +42,10 @@ void
 ColorLUT::create_texture2d(ID3D11Texture2D **texture) const {
     constexpr float clear[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
-    if (FAILED(d3d_device->CreateTexture2D(&desc, nullptr, texture)))
-        throw std::runtime_error("ID3D11Device::CreateTexture2D failed");
+    HR(d3d_device->CreateTexture2D(&desc, nullptr, texture));
 
     ComPtr<ID3D11RenderTargetView> rtv;
-    if (FAILED(d3d_device->CreateRenderTargetView(*texture, nullptr, &rtv)))
-        throw std::runtime_error("ID3D11Device::CreateRenderTargetView failed");
+    HR(d3d_device->CreateRenderTargetView(*texture, nullptr, &rtv));
 
     ComPtr<ID3D11DeviceContext> d3d_context;
     d3d_device->GetImmediateContext(&d3d_context);
@@ -59,20 +53,18 @@ ColorLUT::create_texture2d(ID3D11Texture2D **texture) const {
 }
 
 void
-ColorLUT::create_bitmap(ID3D11Texture2D *texture, D2D1_BITMAP_OPTIONS options, ID2D1Bitmap1 **bitmap) const {
+ColorLUT::create_bitmap(ID3D11Texture2D *texture, D2D1_BITMAP_OPTIONS options, ID2D1Bitmap1 **bmp) const {
     ComPtr<IDXGISurface> surface;
-    if (FAILED(texture->QueryInterface(IID_PPV_ARGS(&surface))))
-        throw std::runtime_error("As IDXGISurface failed");
+    HR(texture->QueryInterface(IID_PPV_ARGS(&surface)));
 
-    D2D1_BITMAP_PROPERTIES1 bmp_props{
+    D2D1_BITMAP_PROPERTIES1 props{
             .pixelFormat = {desc.Format, D2D1_ALPHA_MODE_PREMULTIPLIED},
             .dpiX = 96.0f,
             .dpiY = 96.0f,
             .bitmapOptions = options,
     };
 
-    if (FAILED(d2d_context->CreateBitmapFromDxgiSurface(surface.Get(), &bmp_props, bitmap)))
-        throw std::runtime_error("ID2D1DeviceContext::CreateBitmapFromDxgiSurface failed");
+    HR(d2d_context->CreateBitmapFromDxgiSurface(surface.Get(), &props, bmp));
 }
 
 bool
@@ -95,11 +87,8 @@ ColorLUT::create_effect(const std::wstring &path, float mix, ID2D1Bitmap1 *bmp, 
     }
 
     cross_fade->SetInput(1, bmp);
-    if (FAILED(cross_fade->SetValue(D2D1_CROSSFADE_PROP_WEIGHT, mix)))
-        throw std::runtime_error("ID2D1Properties::SetValue (CROSSFADE_PROP_WEIGHT) failed");
-
-    if (FAILED(cross_fade.CopyTo(effect)))
-        throw std::runtime_error("ComPtr<ID2D1Effect>::CopyTo failed");
+    HR(cross_fade->SetValue(D2D1_CROSSFADE_PROP_WEIGHT, mix));
+    HR(cross_fade.CopyTo(effect));
 
     return true;
 }
@@ -109,8 +98,7 @@ ColorLUT::draw(ID2D1Image *target, ID2D1Effect *effect) const {
     d2d_context->SetTarget(target);
     d2d_context->BeginDraw();
     d2d_context->DrawImage(effect);
-    if (FAILED(d2d_context->EndDraw()))
-        throw std::runtime_error("ID2D1RenderTarget::EndDraw failed");
+    HR(d2d_context->EndDraw());
 }
 
 void
@@ -153,21 +141,10 @@ ColorLUT::load(const std::wstring &path, LUT &lut) {
             });
 
             lut.dimension = 1;
-            HRESULT hr = d2d_context->CreateEffect(CLSID_D2D1TableTransfer, &lut._1d);
-            if (FAILED(hr))
-                throw std::runtime_error("ID2D1DeviceContext::CreateEffect (TableTransfer) failed");
-
-            hr = lut._1d->SetValue(D2D1_TABLETRANSFER_PROP_RED_TABLE, reinterpret_cast<const BYTE *>(r.data()), size);
-            if (FAILED(hr))
-                throw std::runtime_error("ID2D1Properties::SetValue (TABLETRANSFER_PROP_RED_TABLE) failed");
-
-            hr = lut._1d->SetValue(D2D1_TABLETRANSFER_PROP_GREEN_TABLE, reinterpret_cast<const BYTE *>(g.data()), size);
-            if (FAILED(hr))
-                throw std::runtime_error("ID2D1Properties::SetValue (TABLETRANSFER_PROP_GREEN_TABLE) failed");
-
-            hr = lut._1d->SetValue(D2D1_TABLETRANSFER_PROP_BLUE_TABLE, reinterpret_cast<const BYTE *>(b.data()), size);
-            if (FAILED(hr))
-                throw std::runtime_error("ID2D1Properties::SetValue (TABLETRANSFER_PROP_BLUE_TABLE) failed");
+            HR(d2d_context->CreateEffect(CLSID_D2D1TableTransfer, &lut._1d));
+            HR(lut._1d->SetValue(D2D1_TABLETRANSFER_PROP_RED_TABLE, reinterpret_cast<const BYTE *>(r.data()), size));
+            HR(lut._1d->SetValue(D2D1_TABLETRANSFER_PROP_GREEN_TABLE, reinterpret_cast<const BYTE *>(g.data()), size));
+            HR(lut._1d->SetValue(D2D1_TABLETRANSFER_PROP_BLUE_TABLE, reinterpret_cast<const BYTE *>(b.data()), size));
         } break;
         case 3: {
             constexpr UINT32 size = sizeof(RGBA);
@@ -193,20 +170,13 @@ ColorLUT::load(const std::wstring &path, LUT &lut) {
             const UINT32 extents[3] = {cube.size, cube.size, cube.size};
             const UINT32 strides[2] = {w * size, h * size};
 
-            HRESULT hr = d2d_context->CreateLookupTable3D(D2D1_BUFFER_PRECISION_32BPC_FLOAT, extents,
-                                                          reinterpret_cast<const BYTE *>(data.data()),
-                                                          cube.capacity * size, strides, &lookup_table);
-            if (FAILED(hr))
-                throw std::runtime_error("ID2D1DeviceContext2::CreateLookupTable3D failed");
+            HR(d2d_context->CreateLookupTable3D(D2D1_BUFFER_PRECISION_32BPC_FLOAT, extents,
+                                                reinterpret_cast<const BYTE *>(data.data()), cube.capacity * size,
+                                                strides, &lookup_table));
 
             lut.dimension = 3;
-            hr = d2d_context->CreateEffect(CLSID_D2D1LookupTable3D, &lut._3d);
-            if (FAILED(hr))
-                throw std::runtime_error("ID2D1DeviceContext::CreateEffect (LookupTable3D) failed");
-
-            hr = lut._3d->SetValue(D2D1_LOOKUPTABLE3D_PROP_LUT, lookup_table.Get());
-            if (FAILED(hr))
-                throw std::runtime_error("ID2D1Properties::SetValue (LOOKUPTABLE3D_PROP_LUT) failed");
+            HR(d2d_context->CreateEffect(CLSID_D2D1LookupTable3D, &lut._3d));
+            HR(lut._3d->SetValue(D2D1_LOOKUPTABLE3D_PROP_LUT, lookup_table.Get()));
         } break;
         default:
             return false;
