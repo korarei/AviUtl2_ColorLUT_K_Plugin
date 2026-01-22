@@ -86,40 +86,13 @@ jobs:
         path: artifacts
 
     - name: Create notes
-      id: notes
       run: |
-        $pattern_v = '^-\s*\*\*(v[\d.]+)\*\*'
-        $pattern_c = '^\s*-\s*(.+)'
+        $changelog = Get-Content CHANGELOG.md -Raw -Encoding utf8
 
-        $lines = Get-Content README.md -Encoding utf8
+        $changelog -match '(?ms)^##\s+.*?(?=^##\s+|\z)'
+        $section = $matches[0] -replace '^##.*', "## What's Changed"
 
-        $idx = -1
-        for ($i = 0; $i -lt $lines.Count; ++$i) {
-          if ($lines[$i].Trim() -eq "## Change Log") {
-            $idx = $i
-            break
-          }
-        }
-
-        $log = $lines[($idx + 1)..($lines.Count - 1)]
-
-        $changes = @()
-        $in_section = $false
-
-        foreach ($l in $log) {
-          if ($l -match $pattern_v) {
-            if ($in_section) { break }
-            $in_section = $true
-            continue
-          }
-
-          if ($in_section -and ($l -match $pattern_c)) {
-            $changes += "- $($matches[1].Trim())"
-          }
-        }
-
-        $content = "## What's Changed`n" + ($changes -join "`n") + "`n"
-        Set-Content -Path release_notes.md -Value $content -Encoding utf8
+        Set-Content release_notes.md $section.TrimEnd() -Encoding utf8
 
     - name: Create release
       uses: softprops/action-gh-release@v2

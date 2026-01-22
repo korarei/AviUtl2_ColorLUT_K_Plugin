@@ -60,22 +60,18 @@ LUTファイルを指定する．
 
 #### Opacity
 
-適用度合．
+エフェクトの適用度合．
 
-##  ビルド方法
+## ビルド方法
 
-`.github/workflows/releaser.yml`を参照されたい．
+[リリース用ワークフロー](./.github/workflows/releaser.yml)を参照されたい．
 
-## License
+## ライセンス
 
-本プログラムのライセンスは`LICENSE`を参照されたい．
+本プログラムのライセンスは[LICENSE](./LICENSE)を参照されたい．
 
-また，本プログラムが利用するサードパーティ製ライブラリ等のライセンス情報は`THIRD_PARTY_LICENSES.md`に記載している．
+また，本プログラムが利用するサードパーティ製ライブラリ等のライセンス情報は[THIRD_PARTY_LICENSES](./THIRD_PARTY_LICENSES.md)に記載している．
 
-## Change Log
+## 更新履歴
 
-- **v1.0.1**
-  - リロード機能をボタン化
-
-- **v1.0.0**
-  - Release
+[CHANGELOG](./CHANGELOG.md)を参照されたい．
