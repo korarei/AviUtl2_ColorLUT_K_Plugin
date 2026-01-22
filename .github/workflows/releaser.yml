@@ -68,7 +68,7 @@ jobs:
 
   releaser:
     needs: build
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     defaults:
