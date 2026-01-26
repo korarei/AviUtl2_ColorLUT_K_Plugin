@@ -233,9 +233,11 @@ CubeLUT::load(const std::filesystem::path &path) noexcept {
         if (token == "TITLE") {
             ;
         } else if (token == "DOMAIN_MIN") {
-            iss >> domain_min.r >> domain_min.g >> domain_min.b;
+            if (!(iss >> domain_min.r >> domain_min.g >> domain_min.b))
+                return false;
         } else if (token == "DOMAIN_MAX") {
-            iss >> domain_max.r >> domain_max.g >> domain_max.b;
+            if (!(iss >> domain_max.r >> domain_max.g >> domain_max.b))
+                return false;
         } else if (token == "LUT_1D_SIZE") {
             dimension = 1;
             iss >> size;
