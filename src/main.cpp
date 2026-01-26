@@ -28,6 +28,6 @@ RegisterPlugin(HOST_APP_TABLE *host) {
     host->set_plugin_information(L"ColorLUT_K v" VERSION L" by Korarei");
 
     host->register_filter_plugin(&color_lut::info);
-    host->register_clear_cache_handler([]([[maybe_unused]] EDIT_SECTION *edit) { color_lut::reload_lut(); });
+    host->register_clear_cache_handler([]([[maybe_unused]] EDIT_SECTION *edit) { color_lut::clear_cache(); });
 }
 }

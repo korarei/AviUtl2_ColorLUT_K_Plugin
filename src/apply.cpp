@@ -3,7 +3,6 @@
 #include <d2d1_3.h>
 #include <d3d11.h>
 #include <wrl/client.h>
-#include <cwchar>
 #include <filesystem>
 #include <stdexcept>
 
@@ -24,7 +23,9 @@ void *items[] = {&file, &reload, &group_comp, &opacity, nullptr};
 
 bool
 func_proc_video(FILTER_PROC_VIDEO *video) {
-    if (std::wcscmp(file.value, L"") == 0)
+    auto path = std::filesystem::path(file.value).lexically_normal();
+
+    if (path.empty())
         return true;
 
     try {
@@ -38,13 +39,13 @@ func_proc_video(FILTER_PROC_VIDEO *video) {
         lut.create_bitmap(src, D2D1_BITMAP_OPTIONS_NONE, &input);
         lut.create_bitmap(dst.Get(), D2D1_BITMAP_OPTIONS_TARGET, &target);
 
-        ComPtr<ID2D1Effect> effect;
-        if (!lut.create_effect(file.value, static_cast<float>(opacity.value) * 0.01f, input.Get(), &effect)) {
+        ComPtr<ID2D1Effect> fx;
+        if (!lut.create_effect(path, static_cast<float>(opacity.value) * 0.01f, input.Get(), &fx)) {
             logger->error(logger, L"Failed to load LUT");
             return false;
         }
 
-        lut.draw(target.Get(), effect.Get());
+        lut.draw(target.Get(), fx.Get());
         lut.copy(src, dst.Get());
     } catch (const std::exception &e) {
         std::filesystem::path p(reinterpret_cast<const char8_t *>(e.what()));
@@ -66,7 +67,7 @@ FILTER_PLUGIN_TABLE color_lut::info = {
 };
 
 void
-color_lut::reload_lut() {
+color_lut::clear_cache() {
     lut.reload();
 }
 

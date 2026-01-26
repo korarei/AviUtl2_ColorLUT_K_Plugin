@@ -13,7 +13,7 @@ namespace color_lut {
 extern FILTER_PLUGIN_TABLE info;
 
 void
-reload_lut();
+clear_cache();
 
 void
 initialize_logger(LOG_HANDLE *log);
