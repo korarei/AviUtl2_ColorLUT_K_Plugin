@@ -8,7 +8,6 @@
 #include <unordered_map>
 #include <vector>
 
-namespace pixel {
 struct RGB {
     float r, g, b;
 
@@ -21,7 +20,6 @@ struct RGB {
 struct RGBA {
     float r, g, b, a;
 };
-}  // namespace pixel
 
 class ColorLUT {
 public:
@@ -61,13 +59,13 @@ private:
 struct CubeLUT {
     int dimension;
 
-    pixel::RGB domain_min;
-    pixel::RGB domain_max;
-    pixel::RGB scale;
+    RGB domain_min;
+    RGB domain_max;
+    RGB scale;
 
-    std::uint32_t size;
-    std::uint32_t capacity;
-    std::vector<pixel::RGB> data;
+    uint32_t size;
+    uint32_t capacity;
+    std::vector<RGB> data;
 
     [[nodiscard]] bool load(const std::filesystem::path &path) noexcept;
 };

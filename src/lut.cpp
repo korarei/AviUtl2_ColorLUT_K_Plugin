@@ -50,7 +50,7 @@ ColorLUT::setup(ID3D11Texture2D *texture) {
     HR(d2d.device->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, d2d.context.ReleaseAndGetAddressOf()));
     HR(d2d.context->CreateEffect(CLSID_D2D1CrossFade, cross_fade.ReleaseAndGetAddressOf()));
 
-    std::unordered_map<std::filesystem::path, ComPtr<ID2D1Effect>>().swap(cache);
+    std::unordered_map<std::filesystem::path, ComPtr<ID2D1Effect>>{}.swap(cache);
 }
 
 void
@@ -127,58 +127,54 @@ ColorLUT::load(const std::filesystem::path &path, ID2D1Effect **lut) {
 
         switch (cube.dimension) {
             case 1: {
-                const std::uint32_t size = cube.capacity * sizeof(float);
-
-                std::vector<float> r{};
-                std::vector<float> g{};
-                std::vector<float> b{};
-                r.resize(cube.capacity);
-                g.resize(cube.capacity);
-                b.resize(cube.capacity);
+                std::vector<float> r(cube.capacity), g(cube.capacity), b(cube.capacity);
 
                 const auto idx = std::views::iota(0u, cube.capacity);
-                std::for_each(std::execution::par_unseq, idx.begin(), idx.end(), [&](std::uint32_t i) {
-                    auto rgb = cube.data[i];
-                    rgb = (rgb - cube.domain_min) * cube.scale;
+                std::for_each(std::execution::par_unseq, idx.begin(), idx.end(), [&](uint32_t i) {
+                    const auto rgb = (cube.data[i] - cube.domain_min) * cube.scale;
                     r[i] = rgb.r;
                     g[i] = rgb.g;
                     b[i] = rgb.b;
                 });
 
                 HR(d2d.context->CreateEffect(CLSID_D2D1TableTransfer, &fx));
-                HR(fx->SetValue(D2D1_TABLETRANSFER_PROP_RED_TABLE, reinterpret_cast<const BYTE *>(r.data()), size));
-                HR(fx->SetValue(D2D1_TABLETRANSFER_PROP_GREEN_TABLE, reinterpret_cast<const BYTE *>(g.data()), size));
-                HR(fx->SetValue(D2D1_TABLETRANSFER_PROP_BLUE_TABLE, reinterpret_cast<const BYTE *>(b.data()), size));
+
+                const uint32_t bytes = cube.capacity * sizeof(float);
+                auto set_table = [&](int prop, const std::vector<float> &table) {
+                    return fx->SetValue(prop, reinterpret_cast<const uint8_t *>(table.data()), bytes);
+                };
+
+                HR(set_table(D2D1_TABLETRANSFER_PROP_RED_TABLE, r));
+                HR(set_table(D2D1_TABLETRANSFER_PROP_GREEN_TABLE, g));
+                HR(set_table(D2D1_TABLETRANSFER_PROP_BLUE_TABLE, b));
 
                 break;
             }
             case 3: {
-                constexpr std::uint32_t size = sizeof(pixel::RGBA);
+                constexpr uint32_t size = sizeof(RGBA);
 
-                std::vector<pixel::RGBA> data{};
-                data.resize(cube.capacity);
+                std::vector<RGBA> data(cube.capacity);
 
-                const std::uint32_t w = cube.size;
-                const std::uint32_t h = cube.size * cube.size;
+                const uint32_t w = cube.size;
+                const uint32_t h = cube.size * cube.size;
 
                 const auto idx = std::views::iota(0u, cube.capacity);
-                std::for_each(std::execution::par_unseq, idx.begin(), idx.end(), [&](std::uint32_t i) {
-                    const std::uint32_t z = i % w;
-                    const std::uint32_t y = (i / w) % w;
-                    const std::uint32_t x = i / h;
+                std::for_each(std::execution::par_unseq, idx.begin(), idx.end(), [&](uint32_t i) {
+                    const uint32_t z = i % w;
+                    const uint32_t y = (i / w) % w;
+                    const uint32_t x = i / h;
 
-                    auto rgb = cube.data[i];
-                    rgb = (rgb - cube.domain_min) * cube.scale;
+                    const auto rgb = (cube.data[i] - cube.domain_min) * cube.scale;
                     data[x + y * w + z * h] = {rgb.r, rgb.g, rgb.b, 1.0f};
                 });
 
                 ComPtr<ID2D1LookupTable3D> lut3d;
-                const std::uint32_t extents[3] = {cube.size, cube.size, cube.size};
-                const std::uint32_t strides[2] = {w * size, h * size};
+                const uint32_t extents[3] = {cube.size, cube.size, cube.size};
+                const uint32_t strides[2] = {w * size, h * size};
 
                 HR(d2d.context->CreateLookupTable3D(D2D1_BUFFER_PRECISION_32BPC_FLOAT, extents,
-                                                    reinterpret_cast<const BYTE *>(data.data()), cube.capacity * size,
-                                                    strides, &lut3d));
+                                                    reinterpret_cast<const uint8_t *>(data.data()),
+                                                    cube.capacity * size, strides, &lut3d));
 
                 HR(d2d.context->CreateEffect(CLSID_D2D1LookupTable3D, &fx));
                 HR(fx->SetValue(D2D1_LOOKUPTABLE3D_PROP_LUT, lut3d.Get()));
@@ -200,7 +196,7 @@ ColorLUT::load(const std::filesystem::path &path, ID2D1Effect **lut) {
 
 void
 ColorLUT::reload() noexcept {
-    std::unordered_map<std::filesystem::path, ComPtr<ID2D1Effect>>().swap(cache);
+    std::unordered_map<std::filesystem::path, ComPtr<ID2D1Effect>>{}.swap(cache);
 }
 
 void
@@ -218,7 +214,7 @@ CubeLUT::load(const std::filesystem::path &path) noexcept {
 
     size = 0u;
     capacity = 0u;
-    std::vector<pixel::RGB>().swap(data);
+    std::vector<RGB>{}.swap(data);
 
     std::string line;
 
@@ -281,7 +277,7 @@ CubeLUT::load(const std::filesystem::path &path) noexcept {
     if (range.r < eps || range.g < eps || range.b < eps)
         return false;
 
-    scale = pixel::RGB{1.0f, 1.0f, 1.0f} / range;
+    scale = RGB{1.0f, 1.0f, 1.0f} / range;
 
     return true;
 }
