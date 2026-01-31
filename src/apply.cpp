@@ -15,7 +15,9 @@ constinit LOG_HANDLE *logger = nullptr;
 
 ColorLUT lut{};
 
-auto file = FILTER_ITEM_FILE(L"LUT File", L"", L"Cube LUT File (*.cube)\0*.cube\0");
+auto file = FILTER_ITEM_FILE(L"LUT File", L"",
+                             L"Cube LUT File (*.cube)\0*.cube\0"
+                             L"Hald LUT File (*.bmp;*.png;*.tiff;*.tif)\0*.bmp;*.png;*.tiff;*.tif;\0");
 auto reload = FILTER_ITEM_BUTTON(L"Reload LUT", []([[maybe_unused]] EDIT_SECTION *edit) { lut.reload(file.value); });
 auto group_comp = FILTER_ITEM_GROUP(L"Compositing", false);
 auto opacity = FILTER_ITEM_TRACK(L"Opacity", 100.0, 0.0, 100.0, 0.01);
@@ -48,7 +50,7 @@ func_proc_video(FILTER_PROC_VIDEO *video) {
         lut.draw(target.Get(), fx.Get());
         lut.copy(src, dst.Get());
     } catch (const std::exception &e) {
-        std::filesystem::path p(reinterpret_cast<const char8_t *>(e.what()));
+        std::filesystem::path p(reinterpret_cast<const char8_t *>(e.what()));  // 手抜きutf8->utf16変換
         logger->error(logger, p.wstring().c_str());
         return false;
     }

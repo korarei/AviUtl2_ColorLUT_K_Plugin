@@ -5,21 +5,11 @@
 #include <wrl/client.h>
 #include <cstdint>
 #include <filesystem>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
-struct RGB {
-    float r, g, b;
-
-    [[nodiscard]] constexpr RGB operator+(const RGB &v) const noexcept { return {r + v.r, g + v.g, b + v.b}; }
-    [[nodiscard]] constexpr RGB operator-(const RGB &v) const noexcept { return {r - v.r, g - v.g, b - v.b}; }
-    [[nodiscard]] constexpr RGB operator*(const RGB &v) const noexcept { return {r * v.r, g * v.g, b * v.b}; }
-    [[nodiscard]] constexpr RGB operator/(const RGB &v) const noexcept { return {r / v.r, g / v.g, b / v.b}; }
-};
-
-struct RGBA {
-    float r, g, b, a;
-};
+#include "pixel.hpp"
 
 class ColorLUT {
 public:
@@ -59,13 +49,22 @@ private:
 struct CubeLUT {
     int dimension;
 
-    RGB domain_min;
-    RGB domain_max;
-    RGB scale;
+    RGBF32 domain_min;
+    RGBF32 domain_max;
+    RGBF32 scale;
 
     uint32_t size;
     uint32_t capacity;
-    std::vector<RGB> data;
+    std::vector<RGBF32> data;
 
     [[nodiscard]] bool load(const std::filesystem::path &path) noexcept;
+};
+
+struct HaldLUT {
+    uint32_t level;
+    uint32_t w, h;
+    std::vector<RGBAF32> data;
+
+    [[nodiscard]] bool load(const std::filesystem::path &path);
+    [[nodiscard]] bool save(const std::filesystem::path &path, const std::u8string &title) const;
 };
