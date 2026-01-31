@@ -40,17 +40,20 @@ jobs:
     - name: Compress
       id: compress
       run: |
-        $env:GITHUB_REPOSITORY.Split('/')[-1] -match 'AviUtl2_(.*)_Plugin' | Out-Null; $plugin_name = $matches[1]
-        "name=${plugin_name}_$env:GITHUB_REF_NAME" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        $env:GITHUB_REPOSITORY.Split('/')[-1] -match 'AviUtl2?_(.*)_(Plugin|Script)' | Out-Null; $name = $matches[1]
+        "name=${name}_$env:GITHUB_REF_NAME" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
-        $folder = "artifacts/$plugin_name"
-        $archive = "artifacts/${plugin_name}.zip"
+        $dst = "artifacts"
+        $plugin = "$dst/Plugin/$name"
+        $archive = "$dst/${name}.au2pkg.zip"
 
-        mkdir $folder -Force
-        Copy-Item src/build/Release/*.aux2 $folder
-        Copy-Item *.md $folder
-        Copy-Item LICENSE $folder
-        Compress-Archive -Path $folder -DestinationPath $archive -Force
+        mkdir $plugin -Force
+
+        Copy-Item src/build/Release/*.aux2 $plugin -Force
+        Copy-Item *.md $plugin -Force
+        Copy-Item LICENSE $plugin -Force
+
+        Compress-Archive -Path "$dst/*" -DestinationPath $archive -Force
 
         "archive=$archive" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
