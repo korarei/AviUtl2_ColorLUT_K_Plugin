@@ -8,6 +8,7 @@
 #include <wrl/client.h>
 
 #include "lut.hpp"
+#include "utility.hpp"
 
 namespace {
 using Microsoft::WRL::ComPtr;
@@ -54,8 +55,8 @@ func_proc_video(FILTER_PROC_VIDEO *video) {
         lut.draw(target.Get(), fx.Get());
         lut.copy(src, dst.Get());
     } catch (const std::exception &e) {
-        std::filesystem::path p(reinterpret_cast<const char8_t *>(e.what()));  // 手抜きutf8->utf16変換
-        logger->error(logger, p.wstring().c_str());
+        const auto err = string::to_wstr(reinterpret_cast<const char8_t *>(e.what()));
+        logger->error(logger, err.c_str());
         return false;
     }
 

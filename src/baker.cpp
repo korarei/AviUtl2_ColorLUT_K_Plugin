@@ -6,6 +6,7 @@
 #include <wrl/client.h>
 
 #include "lut.hpp"
+#include "utility.hpp"
 
 namespace {
 using Microsoft::WRL::ComPtr;
@@ -28,7 +29,7 @@ auto convert = FILTER_ITEM_BUTTON(L"Convert to .cube", [](EDIT_SECTION *edit) {
     if (edit->info->frame < object.start || object.end < edit->info->frame)
         logger->warn(logger, L"Hald LUT was not updated");
 
-    lut.convert(std::filesystem::path(title.value).u8string(), [](bool success) {
+    lut.convert(string::to_u8str(title.value), [](bool success) {
         if (logger == nullptr)
             return;
 
@@ -68,8 +69,8 @@ func_proc_video(FILTER_PROC_VIDEO *video) {
                 return false;
         }
     } catch (const std::exception &e) {
-        std::filesystem::path p(reinterpret_cast<const char8_t *>(e.what()));  // 手抜きutf8->utf16変換
-        logger->error(logger, p.wstring().c_str());
+        const auto err = string::to_wstr(reinterpret_cast<const char8_t *>(e.what()));
+        logger->error(logger, err.c_str());
         return false;
     }
 
