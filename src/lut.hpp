@@ -1,15 +1,40 @@
 #pragma once
 
-#include <d2d1_3.h>
-#include <d3d11.h>
-#include <wrl/client.h>
 #include <cstdint>
 #include <filesystem>
+#include <future>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include <d2d1_3.h>
+#include <d3d11.h>
+#include <wrl/client.h>
+
 #include "pixel.hpp"
+
+struct CubeLUT {
+    int dimension;
+
+    RGBF32 domain_min;
+    RGBF32 domain_max;
+    RGBF32 scale;
+
+    uint32_t size;
+    uint32_t capacity;
+    std::vector<RGBF32> data;
+
+    [[nodiscard]] bool load(const std::filesystem::path &path) noexcept;
+};
+
+struct HaldLUT {
+    uint32_t level;
+    uint32_t w, h;
+    std::vector<RGBAF32> data;
+
+    [[nodiscard]] bool load(const std::filesystem::path &path);
+    [[nodiscard]] bool save(const std::filesystem::path &path, const std::u8string &title) const;
+};
 
 class ColorLUT {
 public:
@@ -46,25 +71,21 @@ private:
     [[nodiscard]] bool load(const std::filesystem::path &path, ID2D1Effect **lut);
 };
 
-struct CubeLUT {
-    int dimension;
+class Hald2Cube {
+public:
+    [[nodiscard]] bool generate_identity(ID3D11Texture2D *texture);
+    [[nodiscard]] bool load_hald(ID3D11Texture2D *texture);
+    void convert(const std::u8string &title, void (*callback)(bool success));
 
-    RGBF32 domain_min;
-    RGBF32 domain_max;
-    RGBF32 scale;
+private:
+    template <class T>
+    using ComPtr = Microsoft::WRL::ComPtr<T>;
 
-    uint32_t size;
-    uint32_t capacity;
-    std::vector<RGBF32> data;
+    ComPtr<ID3D11Device> device;
+    ComPtr<ID3D11DeviceContext> context;
+    D3D11_TEXTURE2D_DESC desc{};
+    HaldLUT lut{};
+    std::future<void> save_task;
 
-    [[nodiscard]] bool load(const std::filesystem::path &path) noexcept;
-};
-
-struct HaldLUT {
-    uint32_t level;
-    uint32_t w, h;
-    std::vector<RGBAF32> data;
-
-    [[nodiscard]] bool load(const std::filesystem::path &path);
-    [[nodiscard]] bool save(const std::filesystem::path &path, const std::u8string &title) const;
+    void setup(ID3D11Texture2D *texture);
 };

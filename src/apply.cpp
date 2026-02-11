@@ -1,10 +1,11 @@
 #include "apply.hpp"
 
+#include <filesystem>
+#include <stdexcept>
+
 #include <d2d1_3.h>
 #include <d3d11.h>
 #include <wrl/client.h>
-#include <filesystem>
-#include <stdexcept>
 
 #include "lut.hpp"
 
@@ -17,15 +18,15 @@ ColorLUT lut{};
 
 auto file = FILTER_ITEM_FILE(L"LUT File", L"",
                              L"Cube LUT File (*.cube)\0*.cube\0"
-                             L"Hald LUT File (*.bmp;*.png;*.tiff;*.tif)\0*.bmp;*.png;*.tiff;*.tif;\0");
+                             L"Hald LUT File (*.bmp;*.png;*.tiff;*.tif)\0*.bmp;*.png;*.tiff;*.tif;\0\0");
 auto reload = FILTER_ITEM_BUTTON(L"Reload LUT", []([[maybe_unused]] EDIT_SECTION *edit) { lut.reload(file.value); });
-auto group_comp = FILTER_ITEM_GROUP(L"Compositing", false);
+auto group0 = FILTER_ITEM_GROUP(L"Compositing", false);
 auto opacity = FILTER_ITEM_TRACK(L"Opacity", 100.0, 0.0, 100.0, 0.01);
-void *items[] = {&file, &reload, &group_comp, &opacity, nullptr};
+void *items[] = {&file, &reload, &group0, &opacity, nullptr};
 
 bool
 func_proc_video(FILTER_PROC_VIDEO *video) {
-    auto path = std::filesystem::path(file.value).lexically_normal();
+    std::filesystem::path path(file.value);
 
     if (path.empty())
         return true;

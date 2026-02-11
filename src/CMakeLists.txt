@@ -5,6 +5,43 @@ project(ColorLUT_K VERSION ${VERSION} LANGUAGES CXX)
 
 # Path settings.
 set(AVIUTL2_SDK "${CMAKE_SOURCE_DIR}/external/aviutl2_sdk/include/aviutl2_sdk")
+set(SHADER_SRC "${CMAKE_CURRENT_SOURCE_DIR}/shaders")
+set(SHADER_DST "${CMAKE_CURRENT_BINARY_DIR}/shaders")
+file(GLOB HLSL_SOURCES CONFIGURE_DEPENDS "${SHADER_SRC}/*.hlsl")
+file(MAKE_DIRECTORY "${SHADER_DST}")
+
+# Find fxc.exe for shader compilation.
+find_program(FXC_EXECUTABLE fxc
+    HINTS "$ENV{WindowsSdkDir}/bin/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/x64/"
+)
+
+if(NOT FXC_EXECUTABLE)
+    message(FATAL_ERROR "fxc.exe not found.")
+endif()
+
+# Compile all HLSL files.
+set(SHADER_HEADERS "")
+foreach(HLSL IN LISTS HLSL_SOURCES)
+    get_filename_component(FILE_NAME "${HLSL}" NAME_WE)
+    set(HEADER "${SHADER_DST}/${FILE_NAME}.h")
+
+    add_custom_command(
+        OUTPUT "${HEADER}"
+        COMMAND "${FXC_EXECUTABLE}"
+                /T cs_5_0
+                /E main
+                /Fh "${HEADER}"
+                /Vn "g_${FILE_NAME}"
+                "${HLSL}"
+        DEPENDS "${HLSL}"
+        VERBATIM
+    )
+
+    list(APPEND SHADER_HEADERS "${HEADER}")
+endforeach()
+
+# Create a custom target for shaders.
+add_custom_target(Shaders DEPENDS ${SHADER_HEADERS})
 
 # Main target definition.
 add_library(${PROJECT_NAME} SHARED
@@ -12,11 +49,16 @@ add_library(${PROJECT_NAME} SHARED
     main.cpp
     lut.cpp
     apply.cpp
+    baker.cpp
 )
+
+# Ensure shaders are built before the main target.
+add_dependencies(${PROJECT_NAME} Shaders)
 
 # Include directories.
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${AVIUTL2_SDK}
+    "${AVIUTL2_SDK}"
+    "${SHADER_DST}"
 )
 
 # Library Link.

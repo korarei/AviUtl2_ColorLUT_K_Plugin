@@ -6,6 +6,8 @@ struct RGBA16 {
     uint16_t r, g, b, a;
 };
 
+struct RGBAF16 : RGBA16 {};
+
 struct RGBF32 {
     float r, g, b;
 

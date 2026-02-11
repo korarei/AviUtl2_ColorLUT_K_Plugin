@@ -2,12 +2,9 @@
 
 #include "common.hpp"
 
-namespace color_lut {
+namespace hald2cube {
 extern FILTER_PLUGIN_TABLE info;
 
 void
-clear_cache();
-
-void
 initialize_logger(LOG_HANDLE *log);
-}  // namespace color_lut
+}  // namespace hald2cube
