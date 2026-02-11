@@ -19,9 +19,14 @@ auto group0 = FILTER_ITEM_GROUP(L"Identity Settings", false);
 auto level = FILTER_ITEM_TRACK(L"Level", 8.0, 2.0, 24.0, 1.0);
 auto group1 = FILTER_ITEM_GROUP(L"Conversion Settings", true);
 auto title = FILTER_ITEM_STRING(L"Title", L"");
-auto convert = FILTER_ITEM_BUTTON(L"Convert to .cube", []([[maybe_unused]] EDIT_SECTION *edit) {
+auto convert = FILTER_ITEM_BUTTON(L"Convert to .cube", [](EDIT_SECTION *edit) {
     if (mode.value != 1)
         return;
+
+    auto object = edit->get_object_layer_frame(edit->get_focus_object());
+
+    if (edit->info->frame < object.start || object.end < edit->info->frame)
+        logger->warn(logger, L"Hald LUT was not updated");
 
     lut.convert(std::filesystem::path(title.value).u8string(), [](bool success) {
         if (logger == nullptr)

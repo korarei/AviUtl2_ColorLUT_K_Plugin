@@ -14,23 +14,23 @@
 #include "pixel.hpp"
 
 struct CubeLUT {
-    int dimension;
+    int dimension = 0;
 
-    RGBF32 domain_min;
-    RGBF32 domain_max;
-    RGBF32 scale;
+    RGBF32 domain_min{};
+    RGBF32 domain_max{};
+    RGBF32 scale{};
 
-    uint32_t size;
-    uint32_t capacity;
-    std::vector<RGBF32> data;
+    uint32_t size = 0u;
+    uint32_t capacity = 0u;
+    std::vector<RGBF32> data{};
 
     [[nodiscard]] bool load(const std::filesystem::path &path) noexcept;
 };
 
 struct HaldLUT {
-    uint32_t level;
-    uint32_t w, h;
-    std::vector<RGBAF32> data;
+    uint32_t level = 0u;
+    uint32_t w = 0u, h = 0u;
+    std::vector<RGBAF32> data{};
 
     [[nodiscard]] bool load(const std::filesystem::path &path);
     [[nodiscard]] bool save(const std::filesystem::path &path, const std::u8string &title) const;
