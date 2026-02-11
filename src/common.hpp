@@ -8,3 +8,4 @@
 
 #include <filter2.h>
 #include <logger2.h>
+#include <plugin2.h>

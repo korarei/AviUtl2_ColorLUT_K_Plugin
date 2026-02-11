@@ -1,13 +1,9 @@
 #include <cstdint>
 
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
+#include "common.hpp"
 
-#include <plugin2.h>
-
-#include "filter.hpp"
 #include "baker.hpp"
+#include "filter.hpp"
 
 #ifndef VERSION
 #define VERSION L"0.1.0"
