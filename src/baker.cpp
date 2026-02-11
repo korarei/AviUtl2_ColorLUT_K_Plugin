@@ -91,3 +91,8 @@ void
 hald2cube::initialize_logger(LOG_HANDLE *log) {
     logger = log;
 }
+
+void
+hald2cube::set_owner(HWND hwnd) {
+    lut.set_owner(hwnd);
+}

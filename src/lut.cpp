@@ -530,10 +530,10 @@ Hald2Cube::convert(const std::u8string &title, void (*callback)(bool success)) {
         return;
 
     // UIスレッド以外で呼ぶの良くはなさそう
-    save_task = std::async(std::launch::async, [title, callback, lut = lut]() {
+    save_task = std::async(std::launch::async, [title, callback, lut = lut, owner = owner]() {
         HR(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE));
 
-        std::shared_ptr<void> guard(nullptr, [](void *) { CoUninitialize(); }); // 手抜きガード
+        std::shared_ptr<void> guard(nullptr, [](void *) { CoUninitialize(); });  // 手抜きガード
 
         ComPtr<IFileSaveDialog> dialog;
         HR(CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog)));
@@ -542,7 +542,10 @@ Hald2Cube::convert(const std::u8string &title, void (*callback)(bool success)) {
         dialog->SetFileTypes(ARRAYSIZE(filters), filters);
         dialog->SetDefaultExtension(L"cube");
 
-        auto hr = dialog->Show(nullptr);
+        if (owner == nullptr || !IsWindow(owner))
+            throw std::runtime_error("The owner window handle is invalid");
+
+        auto hr = dialog->Show(owner);
         if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
             if (callback)
                 callback(false);
@@ -551,7 +554,7 @@ Hald2Cube::convert(const std::u8string &title, void (*callback)(bool success)) {
         }
 
         if (FAILED(hr))
-            throw std::runtime_error("dialog->Show(nullptr)");
+            throw std::runtime_error("dialog->Show(owner)");
 
         ComPtr<IShellItem> result;
         HR(dialog->GetResult(&result));

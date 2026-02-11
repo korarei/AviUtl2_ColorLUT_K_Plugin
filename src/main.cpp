@@ -23,11 +23,14 @@ InitializePlugin(DWORD ver) {
 
 void
 RegisterPlugin(HOST_APP_TABLE *host) {
+    auto *edit_handle = host->create_edit_handle();
+
     host->set_plugin_information(L"ColorLUT_K v" VERSION L" by Korarei");
 
     host->register_filter_plugin(&color_lut::info);
     host->register_clear_cache_handler([]([[maybe_unused]] EDIT_SECTION *edit) { color_lut::clear_cache(); });
 
     host->register_filter_plugin(&hald2cube::info);
+    hald2cube::set_owner(edit_handle->get_host_app_window());
 }
 }

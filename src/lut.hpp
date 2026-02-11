@@ -76,6 +76,7 @@ public:
     [[nodiscard]] bool generate_identity(ID3D11Texture2D *texture);
     [[nodiscard]] bool load_hald(ID3D11Texture2D *texture);
     void convert(const std::u8string &title, void (*callback)(bool success));
+    void set_owner(HWND hwnd) noexcept { owner = hwnd; };
 
 private:
     template <class T>
@@ -86,6 +87,7 @@ private:
     D3D11_TEXTURE2D_DESC desc{};
     HaldLUT lut{};
     std::future<void> save_task;
+    HWND owner = nullptr;
 
     void setup(ID3D11Texture2D *texture);
 };
