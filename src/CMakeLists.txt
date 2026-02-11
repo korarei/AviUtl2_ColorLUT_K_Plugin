@@ -48,7 +48,7 @@ add_library(${PROJECT_NAME} SHARED
     main.def
     main.cpp
     lut.cpp
-    apply.cpp
+    filter.cpp
     baker.cpp
 )
 

@@ -6,7 +6,7 @@
 
 #include <plugin2.h>
 
-#include "apply.hpp"
+#include "filter.hpp"
 #include "baker.hpp"
 
 #ifndef VERSION
