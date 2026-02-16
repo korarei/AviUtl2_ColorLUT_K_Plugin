@@ -29,14 +29,11 @@ auto convert = FILTER_ITEM_BUTTON(L"Convert to .cube", [](EDIT_SECTION *edit) {
     if (edit->info->frame < object.start || object.end < edit->info->frame)
         logger->warn(logger, L"Hald LUT was not updated");
 
-    lut.convert(string::to_u8str(title.value), [](bool success) {
-        if (logger == nullptr)
-            return;
-
+    lut.convert(string::to_u8str(title.value), [](bool success, const wchar_t *msg) {
         if (success)
-            logger->info(logger, L"Successfully converted to .cube");
+            logger->info(logger, msg);
         else
-            logger->error(logger, L"Failed to convert to .cube");
+            logger->error(logger, msg);
     });
 });
 void *items[] = {&mode, &group0, &level, &group1, &title, &convert, nullptr};

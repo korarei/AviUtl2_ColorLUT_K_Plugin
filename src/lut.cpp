@@ -23,6 +23,7 @@
 #include <windows.h>
 
 #include "shader.hpp"
+#include "utility.hpp"
 
 #define HR(expr)                             \
     do {                                     \
@@ -525,43 +526,50 @@ Hald2Cube::load_hald(ID3D11Texture2D *texture) {
 }
 
 void
-Hald2Cube::convert(const std::u8string &title, void (*callback)(bool success)) {
-    if (save_task.valid() && save_task.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
+Hald2Cube::convert(const std::u8string &title, void (*callback)(bool success, const wchar_t *msg)) {
+    if (pending.valid() && pending.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
         return;
 
     // UIスレッド以外で呼ぶの良くはなさそう
-    save_task = std::async(std::launch::async, [title, callback, lut = lut, owner = owner]() {
-        HR(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE));
+    pending = std::async(std::launch::async, [title, callback, lut = lut, owner = owner]() {
+        try {
+            HR(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE));
 
-        std::shared_ptr<void> guard(nullptr, [](void *) { CoUninitialize(); });  // 手抜きガード
+            std::shared_ptr<void> guard(nullptr, [](void *) { CoUninitialize(); });  // 手抜きガード
 
-        ComPtr<IFileSaveDialog> dialog;
-        HR(CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog)));
+            ComPtr<IFileSaveDialog> dialog;
+            HR(CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog)));
 
-        COMDLG_FILTERSPEC filters[] = {{L"Cube LUT File (*.cube)", L"*.cube"}};
-        dialog->SetFileTypes(ARRAYSIZE(filters), filters);
-        dialog->SetDefaultExtension(L"cube");
+            COMDLG_FILTERSPEC filters[] = {{L"Cube LUT File (*.cube)", L"*.cube"}};
+            dialog->SetFileTypes(ARRAYSIZE(filters), filters);
+            dialog->SetDefaultExtension(L"cube");
 
-        if (owner == nullptr || !IsWindow(owner))
-            throw std::runtime_error("The owner window handle is invalid");
+            if (owner == nullptr || !IsWindow(owner))
+                throw std::runtime_error("The owner window handle is invalid");
 
-        auto hr = dialog->Show(owner);
-        if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED))
-            return;
-        else if (FAILED(hr))
-            throw std::runtime_error("dialog->Show(owner)");
+            auto hr = dialog->Show(owner);
+            if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED))
+                return;
+            else if (FAILED(hr))
+                throw std::runtime_error("dialog->Show(owner)");
 
-        ComPtr<IShellItem> result;
-        HR(dialog->GetResult(&result));
+            ComPtr<IShellItem> result;
+            HR(dialog->GetResult(&result));
 
-        wchar_t *path = nullptr;
-        HR(result->GetDisplayName(SIGDN_FILESYSPATH, &path));
+            wchar_t *path = nullptr;
+            HR(result->GetDisplayName(SIGDN_FILESYSPATH, &path));
 
-        const bool success = lut.save(std::filesystem::path(path), title);
+            const bool success = lut.save(std::filesystem::path(path), title);
 
-        CoTaskMemFree(path);
+            CoTaskMemFree(path);
 
-        if (callback)
-            callback(success);
+            if (callback)
+                callback(success, success ? L"Successfully converted to .cube" : L"Failed to save .cube file");
+        } catch (const std::exception &e) {
+            if (callback) {
+                const auto msg = string::to_wstr(reinterpret_cast<const char8_t *>(e.what()));
+                callback(false, msg.c_str());
+            }
+        }
     });
 }

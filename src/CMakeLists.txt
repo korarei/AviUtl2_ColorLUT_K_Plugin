@@ -7,12 +7,13 @@ project(ColorLUT_K VERSION ${VERSION} LANGUAGES CXX)
 set(AVIUTL2_SDK "${CMAKE_SOURCE_DIR}/external/aviutl2_sdk/include/aviutl2_sdk")
 set(SHADER_SRC "${CMAKE_CURRENT_SOURCE_DIR}/shaders")
 set(SHADER_DST "${CMAKE_CURRENT_BINARY_DIR}/shaders")
-file(GLOB HLSL_SOURCES CONFIGURE_DEPENDS "${SHADER_SRC}/*.hlsl")
+file(GLOB SHADERS CONFIGURE_DEPENDS "${SHADER_SRC}/*.hlsl")
 file(MAKE_DIRECTORY "${SHADER_DST}")
 
 # Find fxc.exe for shader compilation.
 find_program(FXC_EXECUTABLE fxc
     HINTS "$ENV{WindowsSdkDir}/bin/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/x64/"
+          "C:/Program Files (x86)/Windows Kits/10/bin/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/x64/"
 )
 
 if(NOT FXC_EXECUTABLE)
@@ -21,23 +22,27 @@ endif()
 
 # Compile all HLSL files.
 set(SHADER_HEADERS "")
-foreach(HLSL IN LISTS HLSL_SOURCES)
-    get_filename_component(FILE_NAME "${HLSL}" NAME_WE)
-    set(HEADER "${SHADER_DST}/${FILE_NAME}.h")
+foreach(SHADER IN LISTS SHADERS)
+    get_filename_component(FILE_NAME "${SHADER}" NAME_WE)
+    set(SHADER_HEADER "${SHADER_DST}/${FILE_NAME}.h")
 
     add_custom_command(
-        OUTPUT "${HEADER}"
+        OUTPUT "${SHADER_HEADER}"
         COMMAND "${FXC_EXECUTABLE}"
                 /T cs_5_0
                 /E main
-                /Fh "${HEADER}"
+                /O3
+                /WX
+                /Qstrip_reflect
+                /Qstrip_debug
+                /Fh "${SHADER_HEADER}"
                 /Vn "g_${FILE_NAME}"
-                "${HLSL}"
-        DEPENDS "${HLSL}"
+                "${SHADER}"
+        DEPENDS "${SHADER}"
         VERBATIM
     )
 
-    list(APPEND SHADER_HEADERS "${HEADER}")
+    list(APPEND SHADER_HEADERS "${SHADER_HEADER}")
 endforeach()
 
 # Create a custom target for shaders.
