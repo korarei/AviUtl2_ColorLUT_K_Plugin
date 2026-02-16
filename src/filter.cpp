@@ -19,14 +19,14 @@ ColorLUT lut{};
 
 auto file = FILTER_ITEM_FILE(L"LUT File", L"",
                              L"Cube LUT File (*.cube)\0*.cube\0"
-                             L"Hald LUT File (*.bmp;*.png;*.tiff;*.tif)\0*.bmp;*.png;*.tiff;*.tif;\0\0");
+                             L"Hald CLUT File (*.bmp;*.png;*.tiff;*.tif)\0*.bmp;*.png;*.tiff;*.tif;\0\0");
 auto reload = FILTER_ITEM_BUTTON(L"Reload LUT", [](EDIT_SECTION *edit) {
     lut.reload(file.value);
     edit->set_cursor_layer_frame(edit->info->layer, edit->info->frame);
 });
-auto group0 = FILTER_ITEM_GROUP(L"Compositing", false);
+auto compositing_group = FILTER_ITEM_GROUP(L"Compositing", false);
 auto opacity = FILTER_ITEM_TRACK(L"Opacity", 100.0, 0.0, 100.0, 0.01);
-void *items[] = {&file, &reload, &group0, &opacity, nullptr};
+void *items[] = {&file, &reload, &compositing_group, &opacity, nullptr};
 
 bool
 func_proc_video(FILTER_PROC_VIDEO *video) {
