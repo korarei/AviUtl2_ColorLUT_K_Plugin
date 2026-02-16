@@ -44,7 +44,8 @@ jobs:
         "name=${name}_$env:GITHUB_REF_NAME" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
         $dst = "artifacts"
-        $plugin = "$dst/Plugin/$name"
+        $root = "$dst/package"
+        $plugin = "$root/Plugin/$name"
         $archive = "$dst/${name}.au2pkg.zip"
 
         mkdir $plugin -Force
@@ -53,7 +54,27 @@ jobs:
         Copy-Item *.md $plugin -Force
         Copy-Item LICENSE $plugin -Force
 
-        Compress-Archive -Path "$dst/*" -DestinationPath $archive -Force
+        $contents = @(
+            "[ ColorLUT_K.aux2 ]",
+            "",
+            "LUTファイルをAviUtl2で扱えるようにするプラグイン．",
+            "",
+            "このパッケージには以下の内容が含まれている．",
+            "",
+            "- ColorLUT_K (色調整) : LUTファイルを読み込み映像の色を調整",
+            "- Hald2Cube_K (Utility) : Hald CLUT形式の画像をCube LUT形式のファイルに変換",
+            "- README.md : 説明文",
+            "- CHANGELOG.md : 更新履歴",
+            "- LICENSE : ライセンス",
+            "- THIRD_PARTY_LICENSES.md : 3rdパーティライブラリのライセンス",
+            "",
+            "作者: KORAREI",
+            "ライセンス: MIT License",
+            "配布: https://github.com/korarei/AviUtl2_ColorLUT_K_Plugin",
+        )
+        $contents -join "`r`n" | Set-Content -Path "$root/package.txt" -Encoding utf8 -Force
+
+        Compress-Archive -Path "$root/*" -DestinationPath $archive -Force
 
         "archive=$archive" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
