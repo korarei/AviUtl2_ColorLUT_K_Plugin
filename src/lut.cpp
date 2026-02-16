@@ -546,14 +546,9 @@ Hald2Cube::convert(const std::u8string &title, void (*callback)(bool success)) {
             throw std::runtime_error("The owner window handle is invalid");
 
         auto hr = dialog->Show(owner);
-        if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
-            if (callback)
-                callback(false);
-
+        if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED))
             return;
-        }
-
-        if (FAILED(hr))
+        else if (FAILED(hr))
             throw std::runtime_error("dialog->Show(owner)");
 
         ComPtr<IShellItem> result;
