@@ -70,7 +70,7 @@ jobs:
             "",
             "作者: KORAREI",
             "ライセンス: MIT License",
-            "配布: https://github.com/korarei/AviUtl2_ColorLUT_K_Plugin",
+            "配布: https://github.com/korarei/AviUtl2_ColorLUT_K_Plugin"
         )
         $contents -join "`r`n" | Set-Content -Path "$root/package.txt" -Encoding utf8 -Force
 
