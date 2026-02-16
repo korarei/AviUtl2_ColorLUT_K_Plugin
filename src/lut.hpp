@@ -38,9 +38,11 @@ struct HaldLUT {
 
 class ColorLUT {
 public:
+    ColorLUT();
+
     void setup(ID3D11Texture2D *texture);
 
-    void create_texture2d(ID3D11Texture2D **texture) const;
+    void create_texture(ID3D11Texture2D **texture) const;
     void create_bitmap(ID3D11Texture2D *texture, D2D1_BITMAP_OPTIONS options, ID2D1Bitmap1 **bmp) const;
     [[nodiscard]] bool create_effect(const std::filesystem::path &path, float mix, ID2D1Bitmap1 *bmp, ID2D1Effect **fx);
 
@@ -60,6 +62,7 @@ private:
     } d3d;
 
     struct {
+        ComPtr<ID2D1Factory3> factory;
         ComPtr<ID2D1Device2> device;
         ComPtr<ID2D1DeviceContext2> context;
     } d2d;
@@ -73,9 +76,9 @@ private:
 
 class Hald2Cube {
 public:
-    [[nodiscard]] bool generate_identity(ID3D11Texture2D *texture);
-    [[nodiscard]] bool load_hald(ID3D11Texture2D *texture);
-    void convert(const std::u8string &title, void (*callback)(bool success, const wchar_t *msg));
+    [[nodiscard]] bool draw_identity(ID3D11Texture2D *texture);
+    [[nodiscard]] bool load(ID3D11Texture2D *texture);
+    void export_cube(const std::u8string &title, void (*callback)(bool success, const wchar_t *msg));
     void set_owner(HWND hwnd) noexcept { owner = hwnd; };
 
 private:

@@ -39,7 +39,7 @@ func_proc_video(FILTER_PROC_VIDEO *video) {
         auto src = video->get_image_texture2d();
         ComPtr<ID3D11Texture2D> dst;
         lut.setup(src);
-        lut.create_texture2d(&dst);
+        lut.create_texture(&dst);
 
         ComPtr<ID2D1Bitmap1> input;
         ComPtr<ID2D1Bitmap1> target;

@@ -41,7 +41,7 @@ auto export_cube = FILTER_ITEM_BUTTON(L"Export as .cube...", [](EDIT_SECTION *ed
     if (edit->info->frame < object.start || object.end < edit->info->frame)
         logger->warn(logger, L"Hald CLUT was not updated");
 
-    lut.convert(string::to_u8str(title.value), [](bool success, const wchar_t *msg) {
+    lut.export_cube(string::to_u8str(title.value), [](bool success, const wchar_t *msg) {
         if (success)
             logger->info(logger, msg);
         else
@@ -59,7 +59,7 @@ func_proc_video(FILTER_PROC_VIDEO *video) {
                 const auto size = lv * lv * lv;
                 video->set_image_data(nullptr, size, size);
                 auto dst = video->get_image_texture2d();
-                if (!lut.generate_identity(dst)) {
+                if (!lut.draw_identity(dst)) {
                     logger->error(logger, L"Failed to generate identity");
                     return false;
                 }
@@ -67,7 +67,7 @@ func_proc_video(FILTER_PROC_VIDEO *video) {
             }
             case 1: {
                 auto src = video->get_image_texture2d();
-                if (!lut.load_hald(src)) {
+                if (!lut.load(src)) {
                     logger->error(logger, L"Invalid Hald image size");
                     return false;
                 }

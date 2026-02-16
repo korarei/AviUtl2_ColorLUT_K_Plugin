@@ -199,6 +199,8 @@ HaldLUT::save(const std::filesystem::path &path, const std::u8string &title) con
     return true;
 }
 
+ColorLUT::ColorLUT() { HR(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, IID_PPV_ARGS(&d2d.factory))); }
+
 void
 ColorLUT::setup(ID3D11Texture2D *texture) {
     ComPtr<ID3D11Device> d3d_device;
@@ -214,10 +216,7 @@ ColorLUT::setup(ID3D11Texture2D *texture) {
     ComPtr<IDXGIDevice> dxgi_device;
     HR(d3d.device.As(&dxgi_device));
 
-    ComPtr<ID2D1Factory3> d2d_factory;
-    HR(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, IID_PPV_ARGS(&d2d_factory)));
-
-    HR(d2d_factory->CreateDevice(dxgi_device.Get(), d2d.device.ReleaseAndGetAddressOf()));
+    HR(d2d.factory->CreateDevice(dxgi_device.Get(), d2d.device.ReleaseAndGetAddressOf()));
     HR(d2d.device->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, d2d.context.ReleaseAndGetAddressOf()));
     HR(d2d.context->CreateEffect(CLSID_D2D1CrossFade, cross_fade.ReleaseAndGetAddressOf()));
 
@@ -225,7 +224,7 @@ ColorLUT::setup(ID3D11Texture2D *texture) {
 }
 
 void
-ColorLUT::create_texture2d(ID3D11Texture2D **texture) const {
+ColorLUT::create_texture(ID3D11Texture2D **texture) const {
     constexpr float clear[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
     HR(d3d.device->CreateTexture2D(&desc, nullptr, texture));
@@ -288,7 +287,7 @@ ColorLUT::load(const std::filesystem::path &path, ID2D1Effect **lut) {
 
     ComPtr<ID2D1Effect> fx;
 
-    auto create_lut3d_effect = [&](uint32_t size, const std::vector<RGBAF32> &data) {
+    auto make_lut3d = [&](uint32_t size, const std::vector<RGBAF32> &data) {
         constexpr uint32_t bytes = sizeof(RGBAF32);
 
         ComPtr<ID2D1LookupTable3D> lut3d;
@@ -337,7 +336,6 @@ ColorLUT::load(const std::filesystem::path &path, ID2D1Effect **lut) {
                 set_table(D2D1_TABLETRANSFER_PROP_RED_TABLE, r);
                 set_table(D2D1_TABLETRANSFER_PROP_GREEN_TABLE, g);
                 set_table(D2D1_TABLETRANSFER_PROP_BLUE_TABLE, b);
-
                 break;
             }
             case 3: {
@@ -355,8 +353,7 @@ ColorLUT::load(const std::filesystem::path &path, ID2D1Effect **lut) {
                     data[x + y * cube.size + z * area] = RGBAF32(rgb);
                 });
 
-                create_lut3d_effect(cube.size, data);
-
+                make_lut3d(cube.size, data);
                 break;
             }
             default:
@@ -382,7 +379,7 @@ ColorLUT::load(const std::filesystem::path &path, ID2D1Effect **lut) {
             data[x + y * size + z * area] = hald.data[i];
         });
 
-        create_lut3d_effect(size, data);
+        make_lut3d(size, data);
     } else {
         return false;
     }
@@ -416,9 +413,10 @@ Hald2Cube::setup(ID3D11Texture2D *texture) {
 }
 
 bool
-Hald2Cube::generate_identity(ID3D11Texture2D *texture) {
+Hald2Cube::draw_identity(ID3D11Texture2D *texture) {
     struct alignas(16) Params {
         uint32_t level;
+        uint32_t _padding[3];
     };
 
     setup(texture);
@@ -469,7 +467,7 @@ Hald2Cube::generate_identity(ID3D11Texture2D *texture) {
 }
 
 bool
-Hald2Cube::load_hald(ID3D11Texture2D *texture) {
+Hald2Cube::load(ID3D11Texture2D *texture) {
     setup(texture);
 
     if (desc.Format != DXGI_FORMAT_R16G16B16A16_FLOAT)
@@ -526,7 +524,7 @@ Hald2Cube::load_hald(ID3D11Texture2D *texture) {
 }
 
 void
-Hald2Cube::convert(const std::u8string &title, void (*callback)(bool success, const wchar_t *msg)) {
+Hald2Cube::export_cube(const std::u8string &title, void (*callback)(bool success, const wchar_t *msg)) {
     if (pending.valid() && pending.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
         return;
 
