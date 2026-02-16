@@ -543,6 +543,10 @@ Hald2Cube::save(const std::u8string &title, void (*callback)(bool success, const
             ComPtr<IFileSaveDialog> dialog;
             HR(CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog)));
 
+            FILEOPENDIALOGOPTIONS options;
+            HR(dialog->GetOptions(&options));
+            HR(dialog->SetOptions(options | FOS_NOCHANGEDIR));
+
             COMDLG_FILTERSPEC filters[] = {{L"Cube LUT File (*.cube)", L"*.cube"}};
             dialog->SetFileTypes(ARRAYSIZE(filters), filters);
             dialog->SetDefaultExtension(L"cube");
