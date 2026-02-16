@@ -475,8 +475,13 @@ Hald2Cube::load(ID3D11Texture2D *texture) {
 
     const auto level = static_cast<uint32_t>(std::round(std::cbrt(static_cast<double>(desc.Width))));
 
-    if (desc.Width != desc.Height || desc.Width < 8u || desc.Width != level * level * level)
+    if (desc.Width != desc.Height || desc.Width < 8u || desc.Width != level * level * level) {
+        lut.level = 0u;
+        lut.w = 0u;
+        lut.h = 0u;
+        std::vector<RGBAF32>{}.swap(lut.data);
         return false;
+    }
 
     D3D11_TEXTURE2D_DESC staging_desc = desc;
     staging_desc.Usage = D3D11_USAGE_STAGING;
@@ -524,7 +529,7 @@ Hald2Cube::load(ID3D11Texture2D *texture) {
 }
 
 void
-Hald2Cube::export_cube(const std::u8string &title, void (*callback)(bool success, const wchar_t *msg)) {
+Hald2Cube::save(const std::u8string &title, void (*callback)(bool success, const wchar_t *msg)) noexcept {
     if (pending.valid() && pending.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
         return;
 
@@ -562,7 +567,7 @@ Hald2Cube::export_cube(const std::u8string &title, void (*callback)(bool success
             CoTaskMemFree(path);
 
             if (callback)
-                callback(success, success ? L"Successfully converted to .cube" : L"Failed to save .cube file");
+                callback(success, success ? L"Success to save .cube file" : L"Failed to save .cube file");
         } catch (const std::exception &e) {
             if (callback) {
                 const auto msg = string::to_wstr(reinterpret_cast<const char8_t *>(e.what()));
