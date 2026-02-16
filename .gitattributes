@@ -12,6 +12,8 @@
 *.cam2 text eol=crlf linguist-language=Lua working-tree-encoding=utf-8
 *.tra2 text eol=crlf linguist-language=Lua working-tree-encoding=utf-8
 
+*.cube text eol=lf working-tree-encoding=utf-8
+
 *.jpg binary
 *.png binary
 *.gif binary

@@ -5,44 +5,50 @@
 ![GitHub Downloads](https://img.shields.io/github/downloads/korarei/AviUtl2_ColorLUT_K_Plugin/total)
 ![GitHub Release](https://img.shields.io/github/v/release/korarei/AviUtl2_ColorLUT_K_Plugin)
 
-AviUtl2でLUTファイルを扱えるようにするプラグイン
+AviUtl2でLUTファイルを扱えるようにするプラグイン．
 
 [ダウンロードはこちらから](https://github.com/korarei/AviUtl2_ColorLUT_K_Plugin/releases)
 
 ## 動作確認
 
-- [AviUtl ExEdit2 beta26](https://spring-fragrance.mints.ne.jp/aviutl/)
+- [AviUtl ExEdit2 beta33](https://spring-fragrance.mints.ne.jp/aviutl/)
 
 > [!CAUTION]
-> beta26以降必須．
+> beta33以降必須．
 
-## 導入・削除・更新
+## 導入・更新・削除
 
-初期配置場所は`色調整`である．
+初期配置場所は`色調整`と`Utility`である．
 
 `オブジェクト追加メニューの設定`から`ラベル`を変更することで任意の場所へ移動可能．
 
-### 導入
+> [!IMPORTANT]
+> 同一ファイルが複数個所に存在しないようにすること．
 
-下記のいずれかの方法で導入可能．
+### 導入・更新
 
-- 同梱の`*.aux2`をAviUtl2にD&D．
+ダウンロードした`*.au2pkg.zip`をAviUtl2にD&D．
 
-- 同梱の`*.aux2`を`%ProgramData%`内の`aviutl2\Plugin`フォルダに入れる．
-
-- 同梱の`*.aux2`を`aviutl2.exe`と同じ階層内の`data\Plugin`フォルダに入れる．
+手動で導入する場合は，`*.aux2`をAviUtl2が認識する場所に設置．
 
 ### 削除
 
-- 導入したものを削除する．
+パッケージ情報からアンインストールする．
 
-### 更新
-
-- 導入したものを上書きする．
+手動で導入した場合は設置した`*.aux2`を削除する．
 
 ## 使い方
 
-Cube LUT Specification Version 1.0に準拠したLUTファイル (.cube) を読み込み，画像の色を変える．
+### ColorLUT_K
+
+以下の形式のLUTファイルを読み込み，画像の色を変える．
+
+- Cube LUT Specification Version 1.0に準拠したLUTファイル (.cube)
+- Hald CLUTファイル (.bmp, .png, .tiff, .tif)
+
+> [!NOTE]
+> - 浮動小数点形式のTIFFファイルはサポートしていない．
+> - iccプロファイルが埋め込まれた画像はWICが自動的にsRGBに変換する可能性がある．
 
 読み込んだLUTはファイルパスをキーとしてキャッシュを取るので，LUTに変更があった場合は`Reload LUT`または本体の`キャッシュを破棄`をクリックして再読み込みを行うこと．
 
@@ -61,6 +67,48 @@ LUTファイルを指定する．
 #### Opacity
 
 エフェクトの適用度合．
+
+### Hald2Cube_K
+
+Hald CLUTファイルを読み込み，Cube LUTファイルとしてエクスポートする．
+
+以下の順にオブジェクトに対してエフェクトをかけることを想定している．
+
+1. `Hald2Cube_K` (`Identity Pattern`が有効)
+2. 様々なエフェクト (固定サイズ)
+3. `Hald2Cube_K` (`Export as .cube...`でエクスポート)
+
+複数レイヤーを使う場合は以下の手順で行う．
+
+1. `Hald2Cube_K`を追加したオブジェクト (`Identity Pattern`が有効，`Fit Scene to LUT`をクリック)
+2. オブジェクト (様々なエフェクト)
+3. ...
+4. `Hald2Cube_K`を追加したフレームバッファオブジェクト (`Export as .cube...`をクリック)
+
+> [!IMPORTANT]
+> シークバーを動かし，`Hald2Cube_K`を描画させた状態でエクスポートを行うこと．
+
+#### Identity Pattern
+
+チェックを入れると，Identity Hald CLUTを生成する．
+
+#### Level
+
+Identity Hald CLUTのレベルを指定する．
+
+Levelの2乗がCube LUTの`LUT_3D_SIZE`となり，Levelの3乗がHald CLUTの辺の長さとなる．
+
+#### Fit Scene to LUT
+
+チェックを入れると，Hald CLUTの画像サイズに合わせてシーンサイズを調整する．
+
+#### Title
+
+Cube LUTファイルのタイトルを指定する．
+
+#### Export as .cube...
+
+Cube LUTファイルとしてエクスポートする．
 
 ## ビルド方法
 
