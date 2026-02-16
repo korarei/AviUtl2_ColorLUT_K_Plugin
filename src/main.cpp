@@ -16,9 +16,12 @@ InitializeLogger(LOG_HANDLE *log) {
     hald2cube::initialize_logger(log);
 }
 
+DWORD
+RequiredVersion() { return 2003300; }
+
 bool
 InitializePlugin(DWORD ver) {
-    return ver >= 2003000;
+    return ver >= RequiredVersion();
 }
 
 void

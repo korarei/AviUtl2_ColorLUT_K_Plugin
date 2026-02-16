@@ -68,7 +68,7 @@ FILTER_PLUGIN_TABLE color_lut::info = {
         .flag = FILTER_PLUGIN_TABLE::FLAG_VIDEO | FILTER_PLUGIN_TABLE::FLAG_FILTER,
         .name = L"ColorLUT_K",
         .label = L"色調整",
-        .information = L"ColorLUT_K by Korarei",
+        .information = L"ColorLUT_K applies 1D and 3D LUTs to video.",
         .items = items,
         .func_proc_video = func_proc_video,
 };

@@ -95,7 +95,7 @@ FILTER_PLUGIN_TABLE hald2cube::info = {
         .flag = FILTER_PLUGIN_TABLE::FLAG_VIDEO,
         .name = L"Hald2Cube_K",
         .label = L"Utility",
-        .information = L"Hald2Cube_K by Korarei",
+        .information = L"Hald2Cube_K converts Hald CLUTs to 3D LUT (.cube) format.",
         .items = items,
         .func_proc_video = func_proc_video,
 };
