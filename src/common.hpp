@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstdint>
+#include <cstdint>  // IWYU pragma: keep
 
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN

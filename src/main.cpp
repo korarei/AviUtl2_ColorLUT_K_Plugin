@@ -1,5 +1,3 @@
-#include <cstdint>
-
 #include "common.hpp"
 
 #include "baker.hpp"

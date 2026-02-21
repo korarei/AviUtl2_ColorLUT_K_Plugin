@@ -13,7 +13,6 @@
 #include <memory>
 #include <ranges>
 #include <sstream>
-#include <stdexcept>
 #include <system_error>
 
 #define NOMINMAX

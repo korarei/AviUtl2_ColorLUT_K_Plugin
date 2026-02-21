@@ -1,15 +1,11 @@
 #include "baker.hpp"
 
-#include <cstring>
-
 #include <d3d11.h>
-#include <wrl/client.h>
 
 #include "lut.hpp"
 #include "utility.hpp"
 
 namespace {
-using Microsoft::WRL::ComPtr;
 constinit LOG_HANDLE *logger = nullptr;
 
 Hald2Cube lut{};

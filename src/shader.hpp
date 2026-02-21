@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include <span>
 
 using BYTE = uint8_t;

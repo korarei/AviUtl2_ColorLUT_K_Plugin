@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.20.0)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 set(VERSION "0.1.0" CACHE STRING "Project version")
 project(ColorLUT_K VERSION ${VERSION} LANGUAGES CXX)
@@ -11,10 +12,7 @@ file(GLOB SHADERS CONFIGURE_DEPENDS "${SHADER_SRC}/*.hlsl")
 file(MAKE_DIRECTORY "${SHADER_DST}")
 
 # Find fxc.exe for shader compilation.
-find_program(FXC_EXECUTABLE fxc
-    HINTS "$ENV{WindowsSdkDir}/bin/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/x64/"
-          "C:/Program Files (x86)/Windows Kits/10/bin/${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}/x64/"
-)
+find_program(FXC_EXECUTABLE fxc)
 
 if(NOT FXC_EXECUTABLE)
     message(FATAL_ERROR "fxc.exe not found.")
