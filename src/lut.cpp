@@ -243,6 +243,7 @@ ColorLUT::create_bitmap(ID3D11Texture2D *texture, D2D1_BITMAP_OPTIONS options, I
             .dpiX = 96.0f,
             .dpiY = 96.0f,
             .bitmapOptions = options,
+            .colorContext = nullptr,
     };
 
     HR(d2d.context->CreateBitmapFromDxgiSurface(surface.Get(), &props, bmp));
@@ -428,7 +429,10 @@ Hald2Cube::draw_identity(ID3D11Texture2D *texture) {
     if (desc.Width != desc.Height || desc.Width < 8u || desc.Width != level * level * level)
         return false;
 
-    const Params params{level};
+    const Params params{
+            .level = level,
+            ._padding = {},
+    };
 
     D3D11_BUFFER_DESC buffer_desc{};
     buffer_desc.ByteWidth = sizeof(Params);

@@ -94,6 +94,7 @@ FILTER_PLUGIN_TABLE hald2cube::info = {
         .information = L"Hald2Cube_K converts Hald CLUTs to 3D LUT (.cube) format.",
         .items = items,
         .func_proc_video = func_proc_video,
+        .func_proc_audio = nullptr,
 };
 
 void

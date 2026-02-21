@@ -70,6 +70,7 @@ FILTER_PLUGIN_TABLE color_lut::info = {
         .information = L"ColorLUT_K applies 1D and 3D LUTs to video.",
         .items = items,
         .func_proc_video = func_proc_video,
+        .func_proc_audio = nullptr,
 };
 
 void
