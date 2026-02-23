@@ -75,9 +75,9 @@ func_get_config_text() {
 
 OUTPUT_PLUGIN_TABLE exporter::info = {
         .flag = OUTPUT_PLUGIN_TABLE::FLAG_IMAGE,
-        .name = L"LUTファイル出力",
+        .name = L"Export LUT",
         .filefilter = L"Cube LUT File (*.cube)\0*.cube\0\0",
-        .information = L"Export Cube LUT from HaldCLUT.",
+        .information = L"Export Cube LUT from Hald CLUT.",
         .func_output = func_output,
         .func_config = nullptr,
         .func_get_config_text = func_get_config_text,
