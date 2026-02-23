@@ -5,44 +5,50 @@
 ![GitHub Downloads](https://img.shields.io/github/downloads/korarei/AviUtl2_ColorLUT_K_Plugin/total)
 ![GitHub Release](https://img.shields.io/github/v/release/korarei/AviUtl2_ColorLUT_K_Plugin)
 
-AviUtl2にLUTファイルを扱えるようにするプラグイン
+AviUtl ExEdit2でLUTファイルを扱えるようにするプラグイン．
 
 [ダウンロードはこちらから](https://github.com/korarei/AviUtl2_ColorLUT_K_Plugin/releases)
 
 ## 動作確認
 
-- [AviUtl ExEdit2 beta26](https://spring-fragrance.mints.ne.jp/aviutl/)
+- [AviUtl ExEdit2 beta34](https://spring-fragrance.mints.ne.jp/aviutl/)
 
 > [!CAUTION]
-> beta26以降必須．
+> beta34以降必須．
 
-## 導入・削除・更新
+## 導入・更新・削除
 
-初期配置場所は`色調整`である．
+初期配置場所は`色調整`と`LUT`である．
 
 `オブジェクト追加メニューの設定`から`ラベル`を変更することで任意の場所へ移動可能．
 
-### 導入
+> [!IMPORTANT]
+> 同一ファイルが複数個所に存在しないようにすること．
 
-下記のいずれかの方法で導入可能．
+### 導入・更新
 
-- 同梱の`*.aux2`をAviUtl2にD&D．
+ダウンロードした`*.au2pkg.zip`をAviUtl2にD&D．
 
-- 同梱の`*.aux2`を`%ProgramData%`内の`aviutl2\Plugin`フォルダに入れる．
-
-- 同梱の`*.aux2`を`aviutl2.exe`と同じ階層内の`data\Plugin`フォルダに入れる．
+手動で導入する場合は，`*.aux2`をAviUtl2が認識する場所に設置．
 
 ### 削除
 
-- 導入したものを削除する．
+パッケージ情報からアンインストールする．
 
-### 更新
-
-- 導入したものを上書きする．
+手動で導入した場合は設置した`*.aux2`を削除する．
 
 ## 使い方
 
-Cube LUT Specification Version 1.0に準拠したLUTファイル (.cube) を読み込み，画像の色を変える．
+### ColorLUT_K
+
+以下の形式のLUTファイルを読み込み，画像の色を変えるフィルタ．
+
+- Cube LUT Specification Version 1.0に準拠したLUTファイル (.cube)
+- Hald CLUTファイル (.bmp, .png, .tiff, .tif)
+
+> [!NOTE]
+> - 浮動小数点形式のTIFFファイルはサポートしていない．
+> - iccプロファイルが埋め込まれた画像はWICが自動的にsRGBに変換する可能性がある．
 
 読み込んだLUTはファイルパスをキーとしてキャッシュを取るので，LUTに変更があった場合は`Reload LUT`または本体の`キャッシュを破棄`をクリックして再読み込みを行うこと．
 
@@ -58,51 +64,94 @@ LUTファイルを指定する．
 
 `LUT File`で指定したLUTを再読み込みする．
 
+#### Blend Mode
+
+合成時のブレンドモード．
+
+以下の26種類をサポート．
+
+- Normal: 通常
+- Darken: 比較 (暗)
+- Multiply: 乗算
+- Color Burn: 焼き込み (カラー)
+- Linear Burn: 焼き込み (リニア)
+- Darker Color: カラー比較 (暗)
+- Lighten: 比較 (明)
+- Screen: スクリーン
+- Color Dodge: 覆い焼き (カラー)
+- Linear Dodge (Add): 覆い焼き (リニア) - 加算
+- Lighter Color: カラー比較 (明)
+- Overlay: オーバーレイ
+- Soft Light: ソフトライト
+- Hard Light: ハードライト
+- Linear Light: リニアライト
+- Vivid Light: ビビッドライト
+- Pin Light: ピンライト
+- Hard Mix: ハードミックス
+- Difference: 差分
+- Exclusion: 除外
+- Subtract: 減算
+- Divide: 除算
+- Hue: 色相
+- Saturation: 彩度
+- Color: カラー
+- Luminosity: 輝度
+
+> [!NOTE]
+> - `Clamp`にチェックがない場合，合成結果が`[0, 1]`の範囲を超えてしまうことがある．
+> - Hue, Saturation, Color, LuminosityはPhotoshopで採用されているHSLをベースにしている．
+> - AviUtlの合成モードで陰影は焼き込み (リニア)，明暗はリニアライト，色差はカラーに対応する．
+
 #### Opacity
 
-適用度合．
+エフェクトの適用度合．
 
-##  ビルド方法
+#### Clamp
 
-`.github/workflows`内の`releaser.yml`に記載．
+合成結果を`[0, 1]`にクランプする．
 
-## License
-LICENSEファイルに記載．
+### HaldCLUT_K
 
-## Credits
+Hald CLUTを生成するメディアオブジェクト．
 
-### AviUtl ExEdit2 Plugin SDK
+#### Level
 
-https://spring-fragrance.mints.ne.jp/aviutl/
+Identity Hald CLUTのレベルを指定する．
 
----
+Levelの2乗がCube LUTの`LUT_3D_SIZE`となり，Levelの3乗がHald CLUTの辺の長さとなる．
 
-The MIT License
+#### Resize Scene to LUT
 
-Copyright (c) 2025 Kenkun
+チェックを入れると，Hald CLUTの画像サイズに合わせてシーンサイズを調整する．
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+> [!NOTE]
+> beta34ではUndoに対応していない．
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+### Export LUT
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+Cube LUTファイルをエクスポートする出力プラグイン．
 
-## Change Log
+シーン全体をHald CLUTとして読み込み変換を行う．したがって，シーンサイズがHald CLUTのサイズと一致しない場合は失敗する．
 
-- **v1.0.1**
-  - リロード機能をボタン化
+以下の手順でオリジナルLUTファイルを作成できる．
 
-- **v1.0.0**
-  - Release
+1. 画像の色調補正を行う．(複数レイヤーを使用してよい)
+2. 見た目を整えた後，画像を`HaldCLUT_K`に差し替える．
+3. `Resize Scene to LUT`をクリックし，シーンサイズをHald CLUTのサイズに合わせる．
+4. `ファイル/ファイル出力/Export LUT`でCube LUTファイルとしてエクスポートする．
+
+出力したCube LUTファイルのサンプルを[samples/](./samples/)に置いている．
+
+## ビルド方法
+
+[リリース用ワークフロー](./.github/workflows/releaser.yml)を参照されたい．
+
+## ライセンス
+
+本プログラムのライセンスは[LICENSE](./LICENSE)を参照されたい．
+
+また，本プログラムが利用するサードパーティ製ライブラリ等のライセンス情報は[THIRD_PARTY_LICENSES](./THIRD_PARTY_LICENSES.md)に記載している．
+
+## 更新履歴
+
+[CHANGELOG](./CHANGELOG.md)を参照されたい．

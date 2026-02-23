@@ -1,70 +1,86 @@
 #pragma once
 
-#include <d2d1_3.h>
-#include <d3d11.h>
-#include <wrl/client.h>
+#include <filesystem>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include <d2d1_3.h>
+#include <d3d11.h>
+#include <wrl/client.h>
+
+#include "pixel.hpp"
+
+struct CubeLUT {
+    int dimension = 0;
+
+    RGBF32 domain_min{};
+    RGBF32 domain_max{};
+    RGBF32 scale{};
+
+    uint32_t size = 0u;
+    uint32_t capacity = 0u;
+    std::vector<RGBF32> data{};
+
+    [[nodiscard]] bool load(const std::filesystem::path &path) noexcept;
+};
+
+struct HaldCLUT {
+    uint32_t level = 0u;
+    uint32_t w = 0u, h = 0u;
+    std::vector<RGBAF32> data{};
+
+    [[nodiscard]] bool load(const std::filesystem::path &path);
+    [[nodiscard]] bool save(const std::filesystem::path &path, const std::u8string &title) const;
+};
+
 class ColorLUT {
 public:
-    void setup(ID3D11Texture2D *texture);
+    void setup(ID3D11Texture2D *tex);
 
-    void create_texture2d(ID3D11Texture2D **texture) const;
-    void create_bitmap(ID3D11Texture2D *texture, D2D1_BITMAP_OPTIONS options, ID2D1Bitmap1 **bitmap) const;
-    [[nodiscard]] bool create_effect(const std::wstring &path, float mix, ID2D1Bitmap1 *bmp, ID2D1Effect **effect);
-
-    void draw(ID2D1Image *target, ID2D1Effect *effect) const;
+    void create_texture(ID3D11Texture2D **tex) const;
+    void wrap_texture(ID2D1Bitmap1 **bmp, ID3D11Texture2D *tex, D2D1_BITMAP_OPTIONS options) const;
+    [[nodiscard]] bool build_effect(ID2D1Effect **fx, ID2D1Bitmap1 *input, const std::filesystem::path &path, int mode,
+                                    float opacity, bool clamp);
+    void draw(ID2D1Image *target, ID2D1Effect *fx) const;
     void copy(ID3D11Resource *dst, ID3D11Resource *src) const noexcept;
 
     void reload() noexcept;
-    void reload(const std::wstring &path) noexcept;
+    void reload(const std::filesystem::path &path) noexcept;
 
 private:
     template <class T>
     using ComPtr = Microsoft::WRL::ComPtr<T>;
 
-    struct RGBA {
-        float r, g, b, a;
-    };
+    struct {
+        ComPtr<ID3D11Device> device;
+        ComPtr<ID3D11DeviceContext> ctx;
+    } d3d;
 
-    struct LUT {
-        int dimension;
-        ComPtr<ID2D1Effect> _1d;
-        ComPtr<ID2D1Effect> _3d;
-    };
+    struct {
+        ComPtr<ID2D1Factory3> factory;
+        ComPtr<ID2D1Device2> device;
+        ComPtr<ID2D1DeviceContext2> ctx;
+    } d2d;
 
-    ComPtr<ID3D11Device> d3d_device;
-    ComPtr<ID2D1Device2> d2d_device;
-    ComPtr<ID2D1DeviceContext2> d2d_context;
-    ComPtr<ID2D1Effect> cross_fade;
-
+    ComPtr<ID2D1Effect> blend;
     D3D11_TEXTURE2D_DESC desc{};
-    std::unordered_map<std::wstring, LUT> cache{};
+    std::unordered_map<std::filesystem::path, ComPtr<ID2D1Effect>> cache{};
 
-    [[nodiscard]] bool load(const std::wstring &path, LUT &lut);
+    [[nodiscard]] bool load(const std::filesystem::path &path, ID2D1Effect **lut);
 };
 
-struct CubeLUT {
-    struct RGB {
-        float r, g, b;
+class Identity {
+public:
+    [[nodiscard]] bool draw(ID3D11Texture2D *tex);
 
-        [[nodiscard]] constexpr RGB operator+(const RGB &v) const noexcept { return {r + v.r, g + v.g, b + v.b}; }
-        [[nodiscard]] constexpr RGB operator-(const RGB &v) const noexcept { return {r - v.r, g - v.g, b - v.b}; }
-        [[nodiscard]] constexpr RGB operator*(const RGB &v) const noexcept { return {r * v.r, g * v.g, b * v.b}; }
-        [[nodiscard]] constexpr RGB operator/(const RGB &v) const noexcept { return {r / v.r, g / v.g, b / v.b}; }
-    };
+private:
+    template <class T>
+    using ComPtr = Microsoft::WRL::ComPtr<T>;
 
-    int dimension;
+    ComPtr<ID3D11Device> device;
+    ComPtr<ID3D11DeviceContext> ctx;
+    D3D11_TEXTURE2D_DESC desc{};
 
-    RGB domain_min{0.0f, 0.0f, 0.0f};
-    RGB domain_max{1.0f, 1.0f, 1.0f};
-    RGB scale{1.0f, 1.0f, 1.0f};
-
-    UINT32 size = 0u;
-    UINT32 capacity = 0u;
-    std::vector<RGB> data{};
-
-    [[nodiscard]] bool load(const std::wstring &path) noexcept;
+    void setup(ID3D11Texture2D *tex);
 };
