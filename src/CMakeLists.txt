@@ -81,6 +81,7 @@ add_library(${PROJECT_NAME} SHARED
     lut.cpp
     filter.cpp
     baker.cpp
+    exporter.cpp
 )
 
 # Ensure shaders are built before the main target.

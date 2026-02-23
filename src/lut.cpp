@@ -1,8 +1,6 @@
 #include "lut.hpp"
 
 #include <immintrin.h>
-#include <intsafe.h>
-#include <rpcndr.h>
 #include <algorithm>
 #include <charconv>
 #include <chrono>

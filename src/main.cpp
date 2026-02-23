@@ -1,6 +1,7 @@
 #include "common.hpp"
 
 #include "baker.hpp"
+#include "exporter.hpp"
 #include "filter.hpp"
 
 #ifndef VERSION
@@ -12,10 +13,11 @@ void
 InitializeLogger(LOG_HANDLE *log) {
     color_lut::initialize_logger(log);
     hald2cube::initialize_logger(log);
+    exporter::initialize_logger(log);
 }
 
 DWORD
-RequiredVersion() { return 2003300; }
+RequiredVersion() { return 2003400; }
 
 bool
 InitializePlugin(DWORD ver) {
@@ -33,5 +35,7 @@ RegisterPlugin(HOST_APP_TABLE *host) {
 
     host->register_filter_plugin(&hald2cube::info);
     hald2cube::set_owner(edit_handle->get_host_app_window());
+
+    host->register_output_plugin(&exporter::info);
 }
 }
