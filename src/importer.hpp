@@ -1,5 +1,7 @@
 #pragma once
 
+// 無理やりなのでいったん開発中止
+
 #include "common.hpp"
 
 namespace importer {
