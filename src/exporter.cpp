@@ -18,7 +18,7 @@ bool
 hald2cube(OUTPUT_INFO *info) {
     constexpr DWORD format = MAKEFOURCC('H', 'F', '6', '4');
 
-    HaldLUT hald{};
+    HaldCLUT hald{};
 
     const auto level = static_cast<int>(std::round(std::cbrt(static_cast<double>(info->w))));
     if (info->w != info->h || info->w < 8 || info->w != level * level * level) {

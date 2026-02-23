@@ -80,7 +80,7 @@ add_library(${PROJECT_NAME} SHARED
     blend.cpp
     lut.cpp
     filter.cpp
-    baker.cpp
+    identity.cpp
     exporter.cpp
 )
 

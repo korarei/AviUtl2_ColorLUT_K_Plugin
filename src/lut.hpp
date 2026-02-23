@@ -26,7 +26,7 @@ struct CubeLUT {
     [[nodiscard]] bool load(const std::filesystem::path &path) noexcept;
 };
 
-struct HaldLUT {
+struct HaldCLUT {
     uint32_t level = 0u;
     uint32_t w = 0u, h = 0u;
     std::vector<RGBAF32> data{};
@@ -71,13 +71,9 @@ private:
     [[nodiscard]] bool load(const std::filesystem::path &path, ID2D1Effect **lut);
 };
 
-class Hald2Cube {
+class Identity {
 public:
-    [[nodiscard]] uint32_t get_level() const noexcept { return lut.level; }
-    [[nodiscard]] bool draw_identity(ID3D11Texture2D *tex);
-    [[nodiscard]] bool load(ID3D11Texture2D *tex);
-    void save(const std::u8string &title, void (*callback)(bool success, const wchar_t *msg)) noexcept;
-    void set_owner(HWND hwnd) noexcept { owner = hwnd; };
+    [[nodiscard]] bool draw(ID3D11Texture2D *tex);
 
 private:
     template <class T>
@@ -86,9 +82,6 @@ private:
     ComPtr<ID3D11Device> device;
     ComPtr<ID3D11DeviceContext> ctx;
     D3D11_TEXTURE2D_DESC desc{};
-    std::future<void> pending;
-    HWND owner = nullptr;
-    HaldLUT lut{};
 
     void setup(ID3D11Texture2D *tex);
 };

@@ -3,14 +3,12 @@
 #include <immintrin.h>
 #include <algorithm>
 #include <charconv>
-#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstring>
 #include <cwctype>
 #include <execution>
 #include <fstream>
-#include <memory>
 #include <ranges>
 #include <sstream>
 #include <system_error>
@@ -21,7 +19,6 @@
 
 #include "blend.hpp"
 #include "shader.hpp"
-#include "utility.hpp"
 
 #define HR(expr)                             \
     do {                                     \
@@ -119,7 +116,7 @@ CubeLUT::load(const std::filesystem::path &path) noexcept {
 }
 
 bool
-HaldLUT::load(const std::filesystem::path &path) {
+HaldCLUT::load(const std::filesystem::path &path) {
     using Microsoft::WRL::ComPtr;
 
     if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
@@ -165,7 +162,7 @@ HaldLUT::load(const std::filesystem::path &path) {
 }
 
 bool
-HaldLUT::save(const std::filesystem::path &path, const std::u8string &title) const {
+HaldCLUT::save(const std::filesystem::path &path, const std::u8string &title) const {
     if (level < 2u || w != h || w * h != data.size() || w != level * level * level)
         return false;
 
@@ -365,7 +362,7 @@ ColorLUT::load(const std::filesystem::path &path, ID2D1Effect **lut) {
                 return false;
         }
     } else if (ext == L".bmp" || ext == L".png" || ext == L".tiff" || ext == L".tif") {
-        HaldLUT hald{};
+        HaldCLUT hald{};
 
         if (!hald.load(path))
             return false;
@@ -405,7 +402,7 @@ ColorLUT::reload(const std::filesystem::path &path) noexcept {
 }
 
 void
-Hald2Cube::setup(ID3D11Texture2D *tex) {
+Identity::setup(ID3D11Texture2D *tex) {
     ComPtr<ID3D11Device> d3d_device;
     tex->GetDevice(&d3d_device);
     tex->GetDesc(&desc);
@@ -418,7 +415,7 @@ Hald2Cube::setup(ID3D11Texture2D *tex) {
 }
 
 bool
-Hald2Cube::draw_identity(ID3D11Texture2D *tex) {
+Identity::draw(ID3D11Texture2D *tex) {
     struct alignas(16) Params {
         uint32_t level;
         uint32_t _padding[3];
@@ -472,119 +469,4 @@ Hald2Cube::draw_identity(ID3D11Texture2D *tex) {
     ctx->CSSetUnorderedAccessViews(0u, 1u, &null_uav, nullptr);
     ctx->CSSetShader(nullptr, nullptr, 0u);
     return true;
-}
-
-bool
-Hald2Cube::load(ID3D11Texture2D *tex) {
-    setup(tex);
-
-    if (desc.Format != DXGI_FORMAT_R16G16B16A16_FLOAT)
-        return false;
-
-    const auto level = static_cast<uint32_t>(std::round(std::cbrt(static_cast<double>(desc.Width))));
-
-    if (desc.Width != desc.Height || desc.Width < 8u || desc.Width != level * level * level) {
-        lut.level = 0u;
-        lut.w = 0u;
-        lut.h = 0u;
-        std::vector<RGBAF32>{}.swap(lut.data);
-        return false;
-    }
-
-    D3D11_TEXTURE2D_DESC staging_desc = desc;
-    staging_desc.Usage = D3D11_USAGE_STAGING;
-    staging_desc.BindFlags = 0u;
-    staging_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-    staging_desc.MiscFlags = 0u;
-
-    ComPtr<ID3D11Texture2D> staging_texture;
-    HR(device->CreateTexture2D(&staging_desc, nullptr, &staging_texture));
-
-    ctx->CopyResource(staging_texture.Get(), tex);
-
-    D3D11_MAPPED_SUBRESOURCE mapped;
-    HR(ctx->Map(staging_texture.Get(), 0u, D3D11_MAP_READ, 0u, &mapped));
-
-    lut.level = level;
-    lut.w = desc.Width;
-    lut.h = desc.Height;
-    lut.data.resize(desc.Width * desc.Height);
-
-    const auto idx = std::views::iota(0u, desc.Height);
-    std::for_each(std::execution::par, idx.begin(), idx.end(), [&](uint32_t y) {
-        const std::byte *row = static_cast<const std::byte *>(mapped.pData) + y * mapped.RowPitch;
-        const RGBAF16 *src = reinterpret_cast<const RGBAF16 *>(row);
-        RGBAF32 *dst = &lut.data[y * desc.Width];
-
-        size_t x = 0;
-        while (x + 2 <= desc.Width) {
-            __m128i h = _mm_loadu_si128(reinterpret_cast<const __m128i *>(src + x));
-            __m256 f = _mm256_cvtph_ps(h);
-            _mm256_storeu_ps(reinterpret_cast<float *>(dst + x), f);
-            x += 2;
-        }
-
-        while (x < desc.Width) {
-            __m128i h = _mm_loadl_epi64(reinterpret_cast<const __m128i *>(&src[x]));
-            __m128 f = _mm_cvtph_ps(h);
-            _mm_storeu_ps(reinterpret_cast<float *>(&dst[x]), f);
-            ++x;
-        }
-    });
-
-    ctx->Unmap(staging_texture.Get(), 0u);
-    return true;
-}
-
-void
-Hald2Cube::save(const std::u8string &title, void (*callback)(bool success, const wchar_t *msg)) noexcept {
-    if (pending.valid() && pending.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
-        return;
-
-    // UIスレッド以外で呼ぶの良くはなさそう
-    pending = std::async(std::launch::async, [title, callback, lut = lut, owner = owner]() {
-        try {
-            HR(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE));
-
-            std::shared_ptr<void> guard(nullptr, [](void *) { CoUninitialize(); });  // 手抜きガード
-
-            ComPtr<IFileSaveDialog> dialog;
-            HR(CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog)));
-
-            FILEOPENDIALOGOPTIONS options;
-            HR(dialog->GetOptions(&options));
-            HR(dialog->SetOptions(options | FOS_NOCHANGEDIR));
-
-            COMDLG_FILTERSPEC filters[] = {{L"Cube LUT File (*.cube)", L"*.cube"}};
-            dialog->SetFileTypes(ARRAYSIZE(filters), filters);
-            dialog->SetDefaultExtension(L"cube");
-
-            if (owner == nullptr || !IsWindow(owner))
-                throw std::runtime_error("The owner window handle is invalid");
-
-            auto hr = dialog->Show(owner);
-            if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED))
-                return;
-            else if (FAILED(hr))
-                throw std::runtime_error("dialog->Show(owner)");
-
-            ComPtr<IShellItem> result;
-            HR(dialog->GetResult(&result));
-
-            wchar_t *path = nullptr;
-            HR(result->GetDisplayName(SIGDN_FILESYSPATH, &path));
-
-            const bool success = lut.save(std::filesystem::path(path), title);
-
-            CoTaskMemFree(path);
-
-            if (callback)
-                callback(success, success ? L"Success to save .cube file" : L"Failed to save .cube file");
-        } catch (const std::exception &e) {
-            if (callback) {
-                const auto msg = string::to_wstr(reinterpret_cast<const char8_t *>(e.what()));
-                callback(false, msg.c_str());
-            }
-        }
-    });
 }
