@@ -37,10 +37,10 @@ struct HaldLUT {
 
 class ColorLUT {
 public:
-    void setup(ID3D11Texture2D *texture);
+    void setup(ID3D11Texture2D *tex);
 
-    void create_texture(ID3D11Texture2D **texture) const;
-    void wrap_texture(ID2D1Bitmap1 **bmp, ID3D11Texture2D *texture, D2D1_BITMAP_OPTIONS options) const;
+    void create_texture(ID3D11Texture2D **tex) const;
+    void wrap_texture(ID2D1Bitmap1 **bmp, ID3D11Texture2D *tex, D2D1_BITMAP_OPTIONS options) const;
     [[nodiscard]] bool build_effect(ID2D1Effect **fx, ID2D1Bitmap1 *input, const std::filesystem::path &path, int mode,
                                     float opacity, bool clamp);
     void draw(ID2D1Image *target, ID2D1Effect *fx) const;
@@ -55,13 +55,13 @@ private:
 
     struct {
         ComPtr<ID3D11Device> device;
-        ComPtr<ID3D11DeviceContext> context;
+        ComPtr<ID3D11DeviceContext> ctx;
     } d3d;
 
     struct {
         ComPtr<ID2D1Factory3> factory;
         ComPtr<ID2D1Device2> device;
-        ComPtr<ID2D1DeviceContext2> context;
+        ComPtr<ID2D1DeviceContext2> ctx;
     } d2d;
 
     ComPtr<ID2D1Effect> blend;
@@ -74,8 +74,8 @@ private:
 class Hald2Cube {
 public:
     [[nodiscard]] uint32_t get_level() const noexcept { return lut.level; }
-    [[nodiscard]] bool draw_identity(ID3D11Texture2D *texture);
-    [[nodiscard]] bool load(ID3D11Texture2D *texture);
+    [[nodiscard]] bool draw_identity(ID3D11Texture2D *tex);
+    [[nodiscard]] bool load(ID3D11Texture2D *tex);
     void save(const std::u8string &title, void (*callback)(bool success, const wchar_t *msg)) noexcept;
     void set_owner(HWND hwnd) noexcept { owner = hwnd; };
 
@@ -84,11 +84,11 @@ private:
     using ComPtr = Microsoft::WRL::ComPtr<T>;
 
     ComPtr<ID3D11Device> device;
-    ComPtr<ID3D11DeviceContext> context;
+    ComPtr<ID3D11DeviceContext> ctx;
     D3D11_TEXTURE2D_DESC desc{};
     std::future<void> pending;
     HWND owner = nullptr;
     HaldLUT lut{};
 
-    void setup(ID3D11Texture2D *texture);
+    void setup(ID3D11Texture2D *tex);
 };

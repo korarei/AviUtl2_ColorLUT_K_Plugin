@@ -200,47 +200,47 @@ HaldLUT::save(const std::filesystem::path &path, const std::u8string &title) con
 }
 
 void
-ColorLUT::setup(ID3D11Texture2D *texture) {
+ColorLUT::setup(ID3D11Texture2D *tex) {
     if (d2d.factory == nullptr) {
         HR(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, IID_PPV_ARGS(&d2d.factory)));
         HR(Blend::Register(d2d.factory.Get()));
     }
 
     ComPtr<ID3D11Device> d3d_device;
-    texture->GetDevice(&d3d_device);
-    texture->GetDesc(&desc);
+    tex->GetDevice(&d3d_device);
+    tex->GetDesc(&desc);
 
     if (d3d.device != nullptr && d3d.device == d3d_device)
         return;
 
     d3d.device = d3d_device;
-    d3d.device->GetImmediateContext(d3d.context.ReleaseAndGetAddressOf());
+    d3d.device->GetImmediateContext(d3d.ctx.ReleaseAndGetAddressOf());
 
     ComPtr<IDXGIDevice> dxgi_device;
     HR(d3d.device.As(&dxgi_device));
 
     HR(d2d.factory->CreateDevice(dxgi_device.Get(), d2d.device.ReleaseAndGetAddressOf()));
-    HR(d2d.device->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, d2d.context.ReleaseAndGetAddressOf()));
-    HR(d2d.context->CreateEffect(CLSID_Blend, blend.ReleaseAndGetAddressOf()));
+    HR(d2d.device->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, d2d.ctx.ReleaseAndGetAddressOf()));
+    HR(d2d.ctx->CreateEffect(CLSID_Blend, blend.ReleaseAndGetAddressOf()));
 
     std::unordered_map<std::filesystem::path, ComPtr<ID2D1Effect>>{}.swap(cache);
 }
 
 void
-ColorLUT::create_texture(ID3D11Texture2D **texture) const {
+ColorLUT::create_texture(ID3D11Texture2D **tex) const {
     constexpr float clear[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 
-    HR(d3d.device->CreateTexture2D(&desc, nullptr, texture));
+    HR(d3d.device->CreateTexture2D(&desc, nullptr, tex));
 
     ComPtr<ID3D11RenderTargetView> rtv;
-    HR(d3d.device->CreateRenderTargetView(*texture, nullptr, &rtv));
-    d3d.context->ClearRenderTargetView(rtv.Get(), clear);
+    HR(d3d.device->CreateRenderTargetView(*tex, nullptr, &rtv));
+    d3d.ctx->ClearRenderTargetView(rtv.Get(), clear);
 }
 
 void
-ColorLUT::wrap_texture(ID2D1Bitmap1 **bmp, ID3D11Texture2D *texture, D2D1_BITMAP_OPTIONS options) const {
+ColorLUT::wrap_texture(ID2D1Bitmap1 **bmp, ID3D11Texture2D *tex, D2D1_BITMAP_OPTIONS options) const {
     ComPtr<IDXGISurface> surface;
-    HR(texture->QueryInterface(IID_PPV_ARGS(&surface)));
+    HR(tex->QueryInterface(IID_PPV_ARGS(&surface)));
 
     D2D1_BITMAP_PROPERTIES1 props{
             .pixelFormat = {desc.Format, D2D1_ALPHA_MODE_PREMULTIPLIED},
@@ -250,7 +250,7 @@ ColorLUT::wrap_texture(ID2D1Bitmap1 **bmp, ID3D11Texture2D *texture, D2D1_BITMAP
             .colorContext = nullptr,
     };
 
-    HR(d2d.context->CreateBitmapFromDxgiSurface(surface.Get(), &props, bmp));
+    HR(d2d.ctx->CreateBitmapFromDxgiSurface(surface.Get(), &props, bmp));
 }
 
 bool
@@ -273,16 +273,16 @@ ColorLUT::build_effect(ID2D1Effect **fx, ID2D1Bitmap1 *input, const std::filesys
 
 void
 ColorLUT::draw(ID2D1Image *target, ID2D1Effect *fx) const {
-    d2d.context->SetTarget(target);
-    d2d.context->BeginDraw();
-    d2d.context->DrawImage(fx);
-    HR(d2d.context->EndDraw());
-    d2d.context->SetTarget(nullptr);
+    d2d.ctx->SetTarget(target);
+    d2d.ctx->BeginDraw();
+    d2d.ctx->DrawImage(fx);
+    HR(d2d.ctx->EndDraw());
+    d2d.ctx->SetTarget(nullptr);
 }
 
 void
 ColorLUT::copy(ID3D11Resource *dst, ID3D11Resource *src) const noexcept {
-    d3d.context->CopyResource(dst, src);
+    d3d.ctx->CopyResource(dst, src);
 }
 
 bool
@@ -301,11 +301,11 @@ ColorLUT::load(const std::filesystem::path &path, ID2D1Effect **lut) {
         const uint32_t extents[3] = {size, size, size};
         const uint32_t strides[2] = {size * bytes, size * size * bytes};
 
-        HR(d2d.context->CreateLookupTable3D(D2D1_BUFFER_PRECISION_32BPC_FLOAT, extents,
-                                            reinterpret_cast<const BYTE *>(data.data()),
-                                            static_cast<uint32_t>(data.size()) * bytes, strides, &lut3d));
+        HR(d2d.ctx->CreateLookupTable3D(D2D1_BUFFER_PRECISION_32BPC_FLOAT, extents,
+                                        reinterpret_cast<const BYTE *>(data.data()),
+                                        static_cast<uint32_t>(data.size()) * bytes, strides, &lut3d));
 
-        HR(d2d.context->CreateEffect(CLSID_D2D1LookupTable3D, &fx));
+        HR(d2d.ctx->CreateEffect(CLSID_D2D1LookupTable3D, &fx));
         HR(fx->SetValue(D2D1_LOOKUPTABLE3D_PROP_LUT, lut3d.Get()));
         HR(fx->SetValue(D2D1_LOOKUPTABLE3D_PROP_ALPHA_MODE, D2D1_ALPHA_MODE_PREMULTIPLIED));
     };
@@ -333,7 +333,7 @@ ColorLUT::load(const std::filesystem::path &path, ID2D1Effect **lut) {
                     b[i] = rgb.b;
                 });
 
-                HR(d2d.context->CreateEffect(CLSID_D2D1TableTransfer, &fx));
+                HR(d2d.ctx->CreateEffect(CLSID_D2D1TableTransfer, &fx));
 
                 const uint32_t size = cube.capacity * bytes;
                 auto set_table = [&](D2D1_TABLETRANSFER_PROP prop, const std::vector<float> &table) {
@@ -407,26 +407,26 @@ ColorLUT::reload(const std::filesystem::path &path) noexcept {
 }
 
 void
-Hald2Cube::setup(ID3D11Texture2D *texture) {
+Hald2Cube::setup(ID3D11Texture2D *tex) {
     ComPtr<ID3D11Device> d3d_device;
-    texture->GetDevice(&d3d_device);
-    texture->GetDesc(&desc);
+    tex->GetDevice(&d3d_device);
+    tex->GetDesc(&desc);
 
     if (device != nullptr && device == d3d_device)
         return;
 
     device = d3d_device;
-    device->GetImmediateContext(context.ReleaseAndGetAddressOf());
+    device->GetImmediateContext(ctx.ReleaseAndGetAddressOf());
 }
 
 bool
-Hald2Cube::draw_identity(ID3D11Texture2D *texture) {
+Hald2Cube::draw_identity(ID3D11Texture2D *tex) {
     struct alignas(16) Params {
         uint32_t level;
         uint32_t _padding[3];
     };
 
-    setup(texture);
+    setup(tex);
 
     if (desc.Format != DXGI_FORMAT_R16G16B16A16_FLOAT)
         return false;
@@ -458,27 +458,27 @@ Hald2Cube::draw_identity(ID3D11Texture2D *texture) {
     uav_desc.Texture2D.MipSlice = 0u;
 
     ComPtr<ID3D11UnorderedAccessView> uav;
-    HR(device->CreateUnorderedAccessView(texture, &uav_desc, &uav));
+    HR(device->CreateUnorderedAccessView(tex, &uav_desc, &uav));
 
     ComPtr<ID3D11ComputeShader> cs;
     HR(device->CreateComputeShader(shader::Identity::cs.data(), shader::Identity::cs.size_bytes(), nullptr, &cs));
 
-    context->CSSetShader(cs.Get(), nullptr, 0u);
-    context->CSSetConstantBuffers(0u, 1u, buffer.GetAddressOf());
-    context->CSSetUnorderedAccessViews(0u, 1u, uav.GetAddressOf(), nullptr);
-    context->Dispatch((desc.Width + 15u) / 16u, (desc.Height + 15u) / 16u, 1u);
+    ctx->CSSetShader(cs.Get(), nullptr, 0u);
+    ctx->CSSetConstantBuffers(0u, 1u, buffer.GetAddressOf());
+    ctx->CSSetUnorderedAccessViews(0u, 1u, uav.GetAddressOf(), nullptr);
+    ctx->Dispatch((desc.Width + 15u) / 16u, (desc.Height + 15u) / 16u, 1u);
 
     ID3D11Buffer *null_buffer = nullptr;
     ID3D11UnorderedAccessView *null_uav = nullptr;
-    context->CSSetConstantBuffers(0u, 1u, &null_buffer);
-    context->CSSetUnorderedAccessViews(0u, 1u, &null_uav, nullptr);
-    context->CSSetShader(nullptr, nullptr, 0u);
+    ctx->CSSetConstantBuffers(0u, 1u, &null_buffer);
+    ctx->CSSetUnorderedAccessViews(0u, 1u, &null_uav, nullptr);
+    ctx->CSSetShader(nullptr, nullptr, 0u);
     return true;
 }
 
 bool
-Hald2Cube::load(ID3D11Texture2D *texture) {
-    setup(texture);
+Hald2Cube::load(ID3D11Texture2D *tex) {
+    setup(tex);
 
     if (desc.Format != DXGI_FORMAT_R16G16B16A16_FLOAT)
         return false;
@@ -502,10 +502,10 @@ Hald2Cube::load(ID3D11Texture2D *texture) {
     ComPtr<ID3D11Texture2D> staging_texture;
     HR(device->CreateTexture2D(&staging_desc, nullptr, &staging_texture));
 
-    context->CopyResource(staging_texture.Get(), texture);
+    ctx->CopyResource(staging_texture.Get(), tex);
 
     D3D11_MAPPED_SUBRESOURCE mapped;
-    HR(context->Map(staging_texture.Get(), 0u, D3D11_MAP_READ, 0u, &mapped));
+    HR(ctx->Map(staging_texture.Get(), 0u, D3D11_MAP_READ, 0u, &mapped));
 
     lut.level = level;
     lut.w = desc.Width;
@@ -534,7 +534,7 @@ Hald2Cube::load(ID3D11Texture2D *texture) {
         }
     });
 
-    context->Unmap(staging_texture.Get(), 0u);
+    ctx->Unmap(staging_texture.Get(), 0u);
     return true;
 }
 

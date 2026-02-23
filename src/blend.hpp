@@ -27,7 +27,7 @@ public:
     ULONG Release() noexcept override;
     HRESULT QueryInterface(REFIID riid, void **ppv) noexcept override;
 
-    HRESULT Initialize(ID2D1EffectContext *context, ID2D1TransformGraph *graph) noexcept override;
+    HRESULT Initialize(ID2D1EffectContext *ctx, ID2D1TransformGraph *graph) noexcept override;
     HRESULT PrepareForRender(D2D1_CHANGE_TYPE change) noexcept override;
     HRESULT SetGraph(ID2D1TransformGraph *graph) noexcept override;
 

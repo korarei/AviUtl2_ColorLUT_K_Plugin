@@ -79,9 +79,9 @@ Blend::QueryInterface(REFIID riid, void **ppv) noexcept {
 }
 
 HRESULT
-Blend::Initialize(ID2D1EffectContext *context, ID2D1TransformGraph *graph) noexcept {
-    HR(context->LoadPixelShader(GUID_BlendPS, shader::Blend::ps.data(),
-                                static_cast<uint32_t>(shader::Blend::ps.size_bytes())));
+Blend::Initialize(ID2D1EffectContext *ctx, ID2D1TransformGraph *graph) noexcept {
+    HR(ctx->LoadPixelShader(GUID_BlendPS, shader::Blend::ps.data(),
+                            static_cast<uint32_t>(shader::Blend::ps.size_bytes())));
 
     return graph->SetSingleTransformNode(this);
 }
