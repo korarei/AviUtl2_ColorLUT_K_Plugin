@@ -4,7 +4,8 @@ cbuffer params : register(b0) {
 }
 
 [numthreads(16, 16, 1)]
-void main(uint3 dtid : SV_DispatchThreadID) {
+void
+main(uint3 dtid : SV_DispatchThreadID) {
     uint w, h;
     dst.GetDimensions(w, h);
     if (dtid.x >= w || dtid.y >= h)

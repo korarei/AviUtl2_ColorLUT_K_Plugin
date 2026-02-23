@@ -24,8 +24,26 @@ auto reload = FILTER_ITEM_BUTTON(L"Reload LUT", [](EDIT_SECTION *edit) {
     edit->set_cursor_layer_frame(edit->info->layer, edit->info->frame);
 });
 auto compositing_group = FILTER_ITEM_GROUP(L"Compositing", false);
+FILTER_ITEM_SELECT::ITEM modes[] = {
+        {L"Normal", 0},         {L"Darken", 2},
+        {L"Multiply", 3},       {L"Color Burn", 4},
+        {L"Linear Burn", 5},    {L"Darker Color", 6},
+        {L"Lighten", 7},        {L"Screen", 8},
+        {L"Color Dodge", 9},    {L"Linear Dodge (Add)", 10},
+        {L"Lighter Color", 11}, {L"Overlay", 12},
+        {L"Soft Light", 13},    {L"Hard Light", 14},
+        {L"Linear Light", 15},  {L"Vivid Light", 16},
+        {L"Pin Light", 17},     {L"Hard Mix", 18},
+        {L"Difference", 19},    {L"Exclusion", 20},
+        {L"Subtract", 21},      {L"Divide", 22},
+        {L"Hue", 23},           {L"Saturation", 24},
+        {L"Color", 25},         {L"Luminosity", 26},
+        {nullptr, -1},
+};
+auto mode = FILTER_ITEM_SELECT(L"Blend Mode", 0, modes);
 auto opacity = FILTER_ITEM_TRACK(L"Opacity", 100.0, 0.0, 100.0, 0.01);
-void *items[] = {&file, &reload, &compositing_group, &opacity, nullptr};
+auto clamp = FILTER_ITEM_CHECK(L"Clamp", false);
+void *items[] = {&file, &reload, &compositing_group, &mode, &opacity, &clamp, nullptr};
 
 bool
 func_proc_video(FILTER_PROC_VIDEO *video) {
@@ -42,11 +60,12 @@ func_proc_video(FILTER_PROC_VIDEO *video) {
 
         ComPtr<ID2D1Bitmap1> input;
         ComPtr<ID2D1Bitmap1> target;
-        lut.create_bitmap(src, D2D1_BITMAP_OPTIONS_NONE, &input);
-        lut.create_bitmap(dst.Get(), D2D1_BITMAP_OPTIONS_TARGET, &target);
+        lut.wrap_texture(&input, src, D2D1_BITMAP_OPTIONS_NONE);
+        lut.wrap_texture(&target, dst.Get(), D2D1_BITMAP_OPTIONS_TARGET);
 
         ComPtr<ID2D1Effect> fx;
-        if (!lut.create_effect(path, static_cast<float>(opacity.value) * 0.01f, input.Get(), &fx)) {
+        if (!lut.build_effect(&fx, input.Get(), path, static_cast<int>(mode.value),
+                              static_cast<float>(opacity.value) * 0.01f, clamp.value)) {
             logger->error(logger, L"Failed to load LUT");
             return false;
         }

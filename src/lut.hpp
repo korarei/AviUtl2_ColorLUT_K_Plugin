@@ -37,14 +37,12 @@ struct HaldLUT {
 
 class ColorLUT {
 public:
-    ColorLUT();
-
     void setup(ID3D11Texture2D *texture);
 
     void create_texture(ID3D11Texture2D **texture) const;
-    void create_bitmap(ID3D11Texture2D *texture, D2D1_BITMAP_OPTIONS options, ID2D1Bitmap1 **bmp) const;
-    [[nodiscard]] bool create_effect(const std::filesystem::path &path, float mix, ID2D1Bitmap1 *bmp, ID2D1Effect **fx);
-
+    void wrap_texture(ID2D1Bitmap1 **bmp, ID3D11Texture2D *texture, D2D1_BITMAP_OPTIONS options) const;
+    [[nodiscard]] bool build_effect(ID2D1Effect **fx, ID2D1Bitmap1 *input, const std::filesystem::path &path, int mode,
+                                    float opacity, bool clamp);
     void draw(ID2D1Image *target, ID2D1Effect *fx) const;
     void copy(ID3D11Resource *dst, ID3D11Resource *src) const noexcept;
 
@@ -66,7 +64,7 @@ private:
         ComPtr<ID2D1DeviceContext2> context;
     } d2d;
 
-    ComPtr<ID2D1Effect> cross_fade;
+    ComPtr<ID2D1Effect> blend;
     D3D11_TEXTURE2D_DESC desc{};
     std::unordered_map<std::filesystem::path, ComPtr<ID2D1Effect>> cache{};
 

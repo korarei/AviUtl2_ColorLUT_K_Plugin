@@ -1,6 +1,8 @@
 #include "lut.hpp"
 
 #include <immintrin.h>
+#include <intsafe.h>
+#include <rpcndr.h>
 #include <algorithm>
 #include <charconv>
 #include <chrono>
@@ -15,12 +17,11 @@
 #include <sstream>
 #include <system_error>
 
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
 #include <shobjidl.h>
 #include <wincodec.h>
 #include <windows.h>
 
+#include "blend.hpp"
 #include "shader.hpp"
 #include "utility.hpp"
 
@@ -156,7 +157,7 @@ HaldLUT::load(const std::filesystem::path &path) {
     const size_t size = w * h;
     std::vector<RGBA16> buffer(size);
     const uint32_t stride = w * sizeof(RGBA16);
-    HR(converter->CopyPixels(nullptr, stride, stride * h, reinterpret_cast<uint8_t *>(buffer.data())));
+    HR(converter->CopyPixels(nullptr, stride, stride * h, reinterpret_cast<BYTE *>(buffer.data())));
 
     data.resize(size);
     const auto idx = std::views::iota(0uz, size);
@@ -198,10 +199,13 @@ HaldLUT::save(const std::filesystem::path &path, const std::u8string &title) con
     return true;
 }
 
-ColorLUT::ColorLUT() { HR(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, IID_PPV_ARGS(&d2d.factory))); }
-
 void
 ColorLUT::setup(ID3D11Texture2D *texture) {
+    if (d2d.factory == nullptr) {
+        HR(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, IID_PPV_ARGS(&d2d.factory)));
+        HR(Blend::Register(d2d.factory.Get()));
+    }
+
     ComPtr<ID3D11Device> d3d_device;
     texture->GetDevice(&d3d_device);
     texture->GetDesc(&desc);
@@ -217,7 +221,7 @@ ColorLUT::setup(ID3D11Texture2D *texture) {
 
     HR(d2d.factory->CreateDevice(dxgi_device.Get(), d2d.device.ReleaseAndGetAddressOf()));
     HR(d2d.device->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, d2d.context.ReleaseAndGetAddressOf()));
-    HR(d2d.context->CreateEffect(CLSID_D2D1CrossFade, cross_fade.ReleaseAndGetAddressOf()));
+    HR(d2d.context->CreateEffect(CLSID_Blend, blend.ReleaseAndGetAddressOf()));
 
     std::unordered_map<std::filesystem::path, ComPtr<ID2D1Effect>>{}.swap(cache);
 }
@@ -234,7 +238,7 @@ ColorLUT::create_texture(ID3D11Texture2D **texture) const {
 }
 
 void
-ColorLUT::create_bitmap(ID3D11Texture2D *texture, D2D1_BITMAP_OPTIONS options, ID2D1Bitmap1 **bmp) const {
+ColorLUT::wrap_texture(ID2D1Bitmap1 **bmp, ID3D11Texture2D *texture, D2D1_BITMAP_OPTIONS options) const {
     ComPtr<IDXGISurface> surface;
     HR(texture->QueryInterface(IID_PPV_ARGS(&surface)));
 
@@ -250,16 +254,19 @@ ColorLUT::create_bitmap(ID3D11Texture2D *texture, D2D1_BITMAP_OPTIONS options, I
 }
 
 bool
-ColorLUT::create_effect(const std::filesystem::path &path, float mix, ID2D1Bitmap1 *bmp, ID2D1Effect **fx) {
+ColorLUT::build_effect(ID2D1Effect **fx, ID2D1Bitmap1 *input, const std::filesystem::path &path, int mode,
+                       float opacity, bool clamp) {
     ComPtr<ID2D1Effect> lut;
     if (!load(path, &lut))
         return false;
 
-    lut->SetInput(0, bmp);
-    cross_fade->SetInputEffect(0, lut.Get());
-    cross_fade->SetInput(1, bmp);
-    HR(cross_fade->SetValue(D2D1_CROSSFADE_PROP_WEIGHT, mix));
-    HR(cross_fade.CopyTo(fx));
+    lut->SetInput(0, input);
+    blend->SetInputEffect(0, lut.Get());
+    blend->SetInput(1, input);
+    HR(blend->SetValue(Blend::Property::Opacity, opacity));
+    HR(blend->SetValue(Blend::Property::Mode, mode));
+    HR(blend->SetValue(Blend::Property::Clamp, static_cast<BOOL>(clamp)));
+    HR(blend.CopyTo(fx));
 
     return true;
 }
@@ -295,7 +302,7 @@ ColorLUT::load(const std::filesystem::path &path, ID2D1Effect **lut) {
         const uint32_t strides[2] = {size * bytes, size * size * bytes};
 
         HR(d2d.context->CreateLookupTable3D(D2D1_BUFFER_PRECISION_32BPC_FLOAT, extents,
-                                            reinterpret_cast<const uint8_t *>(data.data()),
+                                            reinterpret_cast<const BYTE *>(data.data()),
                                             static_cast<uint32_t>(data.size()) * bytes, strides, &lut3d));
 
         HR(d2d.context->CreateEffect(CLSID_D2D1LookupTable3D, &fx));
@@ -330,7 +337,7 @@ ColorLUT::load(const std::filesystem::path &path, ID2D1Effect **lut) {
 
                 const uint32_t size = cube.capacity * bytes;
                 auto set_table = [&](D2D1_TABLETRANSFER_PROP prop, const std::vector<float> &table) {
-                    HR(fx->SetValue(prop, reinterpret_cast<const uint8_t *>(table.data()), size));
+                    HR(fx->SetValue(prop, reinterpret_cast<const BYTE *>(table.data()), size));
                 };
 
                 set_table(D2D1_TABLETRANSFER_PROP_RED_TABLE, r);
@@ -454,7 +461,7 @@ Hald2Cube::draw_identity(ID3D11Texture2D *texture) {
     HR(device->CreateUnorderedAccessView(texture, &uav_desc, &uav));
 
     ComPtr<ID3D11ComputeShader> cs;
-    HR(device->CreateComputeShader(shader::identity.data(), shader::identity.size(), nullptr, &cs));
+    HR(device->CreateComputeShader(shader::Identity::cs.data(), shader::Identity::cs.size_bytes(), nullptr, &cs));
 
     context->CSSetShader(cs.Get(), nullptr, 0u);
     context->CSSetConstantBuffers(0u, 1u, buffer.GetAddressOf());
