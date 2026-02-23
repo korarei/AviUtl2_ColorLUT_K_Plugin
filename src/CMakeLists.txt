@@ -82,6 +82,7 @@ add_library(${PROJECT_NAME} SHARED
     filter.cpp
     identity.cpp
     exporter.cpp
+    importer.cpp
 )
 
 # Ensure shaders are built before the main target.

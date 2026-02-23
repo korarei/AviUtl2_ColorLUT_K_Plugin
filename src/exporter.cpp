@@ -6,8 +6,6 @@
 #include <filesystem>
 #include <ranges>
 
-#include <vfw.h>
-
 #include "lut.hpp"
 #include "pixel.hpp"
 
