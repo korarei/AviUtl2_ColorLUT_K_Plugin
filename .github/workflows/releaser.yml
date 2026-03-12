@@ -59,24 +59,15 @@ jobs:
         $contents = @(
             "[ ${name} ]",
             "",
-            "LUTファイルをAviUtl ExEdit2で扱えるようにするプラグイン．",
-            "",
-            "このパッケージには以下の内容が含まれている．",
-            "",
-            "- ColorLUT_K.aux2: プラグイン本体",
-            "- README.md: 説明文",
-            "- CHANGELOG.md: 更新履歴",
-            "- LICENSE: ライセンス",
-            "- THIRD_PARTY_LICENSES.md: 3rdパーティライブラリのライセンス",
+            "Version: ${env:GITHUB_REF_NAME}",
+            "Author: KORAREI",
+            "License: MIT",
             "",
             "以下の機能が追加される",
             "- ColorLUT_K (色調整): LUTファイルを読み込み映像の色を調整",
             "- HaldCLUT_K (LUT): Hald CLUTのメディアオブジェクト",
-            "- Export LUT: 画像からLUTをエクスポート",
-            "",
-            "作者: KORAREI",
-            "ライセンス: MIT License",
-            "配布: https://github.com/korarei/AviUtl2_ColorLUT_K_Plugin"
+            "- LUTファイル出力: 画像からLUTをエクスポート",
+            "- LUTフィルタをレイヤーに追加: LUTファイルをD&Dでレイヤー追加",
         )
         $contents -join "`r`n" | Set-Content -Path "$root/package.txt" -Encoding utf8 -Force
         "[package]`r`nid=${name}`r`nname=${name}" | Set-Content -Path "$root/package.ini" -Encoding utf8 -Force
