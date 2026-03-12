@@ -36,13 +36,14 @@ struct HaldCLUT {
 
 class ColorLUT {
 public:
+    [[nodiscard]] static bool load(ID2D1Effect **lut, ID2D1DeviceContext2 *ctx, const std::filesystem::path &path);
+
     void setup(ID3D11Texture2D *tex);
 
     void create_texture(ID3D11Texture2D **tex) const;
     void wrap_texture(ID2D1Bitmap1 **bmp, ID3D11Texture2D *tex, D2D1_BITMAP_OPTIONS options) const;
-    [[nodiscard]] bool build_effect(ID2D1Effect **fx, ID2D1Bitmap1 *input, const std::filesystem::path &path, int mode,
-                                    float opacity, bool clamp);
-    void draw(ID2D1Image *target, ID2D1Effect *fx) const;
+    [[nodiscard]] bool configure(const std::filesystem::path &path, int mode, double opacity, bool clamp);
+    void draw(ID2D1Image *target, ID2D1Image *input) const;
     void copy(ID3D11Resource *dst, ID3D11Resource *src) const noexcept;
 
     void reload() noexcept;
@@ -67,8 +68,6 @@ private:
     ComPtr<ID2D1Effect> blend;
     D3D11_TEXTURE2D_DESC desc{};
     std::unordered_map<std::filesystem::path, ComPtr<ID2D1Effect>> cache{};
-
-    [[nodiscard]] bool load(const std::filesystem::path &path);
 };
 
 class Identity {

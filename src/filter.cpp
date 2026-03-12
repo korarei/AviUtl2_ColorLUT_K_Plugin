@@ -63,14 +63,12 @@ func_proc_video(FILTER_PROC_VIDEO *video) {
         lut.wrap_texture(&input, src, D2D1_BITMAP_OPTIONS_NONE);
         lut.wrap_texture(&target, dst.Get(), D2D1_BITMAP_OPTIONS_TARGET);
 
-        ComPtr<ID2D1Effect> fx;
-        if (!lut.build_effect(&fx, input.Get(), path, static_cast<int>(mode.value),
-                              static_cast<float>(opacity.value) * 0.01f, clamp.value)) {
+        if (!lut.configure(path, static_cast<int>(mode.value), opacity.value * 0.01, clamp.value)) {
             logger->error(logger, L"Failed to load LUT");
             return false;
         }
 
-        lut.draw(target.Get(), fx.Get());
+        lut.draw(target.Get(), input.Get());
         lut.copy(src, dst.Get());
     } catch (const std::exception &e) {
         const auto err = string::to_wstr(reinterpret_cast<const char8_t *>(e.what()));
