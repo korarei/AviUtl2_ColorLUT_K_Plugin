@@ -18,7 +18,7 @@ add_library(${PROJECT_NAME} SHARED
     filter.cpp
     identity.cpp
     exporter.cpp
-    # importer.cpp
+    importer.cpp
     core/blend.cpp
     core/lut.cpp
 )

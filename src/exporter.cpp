@@ -71,7 +71,7 @@ func_get_config_text() {
 }
 }  // namespace
 
-OUTPUT_PLUGIN_TABLE exporter::info = {
+constinit OUTPUT_PLUGIN_TABLE exporter::info = {
         .flag = OUTPUT_PLUGIN_TABLE::FLAG_IMAGE,
         .name = L"LUTファイル出力",
         .filefilter = L"Cube LUT File (*.cube)\0*.cube\0\0",

@@ -80,7 +80,7 @@ func_proc_video(FILTER_PROC_VIDEO *video) {
 }
 }  // namespace
 
-FILTER_PLUGIN_TABLE color_lut::info = {
+constinit FILTER_PLUGIN_TABLE color_lut::info = {
         .flag = FILTER_PLUGIN_TABLE::FLAG_VIDEO | FILTER_PLUGIN_TABLE::FLAG_FILTER,
         .name = L"ColorLUT_K",
         .label = L"色調整",
