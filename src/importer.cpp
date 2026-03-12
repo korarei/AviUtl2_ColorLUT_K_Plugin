@@ -1,5 +1,7 @@
 #include "importer.hpp"
 
+#include <cwctype>
+#include <filesystem>
 #include <format>
 #include <string>
 
@@ -16,7 +18,15 @@ importer::initialize_logger(LOG_HANDLE *log) {
 
 void
 importer::add_filter(EDIT_SECTION *edit, const wchar_t *file) {
-    std::u8string path = string::to_u8str(file);
+    std::filesystem::path path(file);
+
+    auto ext = path.extension().wstring();
+    std::ranges::for_each(ext, [](wchar_t &c) { c = std::towlower(c); });
+    if (ext != L".cube" && ext != L".bmp" && ext != L".png" && ext != L".tif" && ext != L".tiff") {
+        logger->error(logger, L"invalid file extension");
+        return;
+    }
+
     std::string alias = std::format(
             "[Object]\n"
             "[Object.0]\n"
@@ -29,7 +39,7 @@ importer::add_filter(EDIT_SECTION *edit, const wchar_t *file) {
             "Blend Mode=Normal\n"
             "Opacity=100.00\n"
             "Clamp=0\n",
-            std::string(path.begin(), path.end()));
+            string::to_str(path.u8string()));
 
     // get_mouse_layer_frameはダメそう (あさってのところに置かれる)
 
