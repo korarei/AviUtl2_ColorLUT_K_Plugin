@@ -6,8 +6,8 @@
 #include <filesystem>
 #include <ranges>
 
-#include "lut.hpp"
-#include "pixel.hpp"
+#include "core/lut.hpp"
+#include "core/pixel.hpp"
 
 namespace {
 constinit LOG_HANDLE *logger = nullptr;
@@ -67,13 +67,13 @@ func_output(OUTPUT_INFO *info) {
 
 const wchar_t *
 func_get_config_text() {
-    return L"TITLE: Filename / DOMAIN_MAX: 1.0 / DOMAIN_MIN: 0.0";
+    return L"TITLE: {STEM} / DOMAIN_MAX: 1.0 / DOMAIN_MIN: 0.0";
 }
 }  // namespace
 
 OUTPUT_PLUGIN_TABLE exporter::info = {
         .flag = OUTPUT_PLUGIN_TABLE::FLAG_IMAGE,
-        .name = L"Export LUT",
+        .name = L"LUTファイル出力",
         .filefilter = L"Cube LUT File (*.cube)\0*.cube\0\0",
         .information = L"Export Cube LUT from Hald CLUT.",
         .func_output = func_output,

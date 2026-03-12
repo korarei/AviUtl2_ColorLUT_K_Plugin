@@ -6,8 +6,8 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 
-#include "lut.hpp"
-#include "utility.hpp"
+#include "core/lut.hpp"
+#include "core/utility.hpp"
 
 namespace {
 using Microsoft::WRL::ComPtr;

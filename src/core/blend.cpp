@@ -121,13 +121,12 @@ Blend::MapInputRectsToOutputRect(const D2D1_RECT_L *in_rects, [[maybe_unused]] c
     if (count != 2u)
         return E_INVALIDARG;
 
-    const auto &fg = in_rects[0];
-    const auto &bg = in_rects[1];
-    if (fg.left != bg.left || fg.top != bg.top || fg.right != bg.right || fg.bottom != bg.bottom)
-        return E_INVALIDARG;
+    out_rect->left = std::min(in_rects[0].left, in_rects[1].left);
+    out_rect->top = std::min(in_rects[0].top, in_rects[1].top);
+    out_rect->right = std::max(in_rects[0].right, in_rects[1].right);
+    out_rect->bottom = std::max(in_rects[0].bottom, in_rects[1].bottom);
 
-    *out_rect = fg;
-    *out_opq = {};
+    *out_opq = {0, 0, 0, 0};
     return S_OK;
 }
 

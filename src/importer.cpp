@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "utility.hpp"
+#include "core/utility.hpp"
 
 namespace {
 constinit LOG_HANDLE *logger = nullptr;

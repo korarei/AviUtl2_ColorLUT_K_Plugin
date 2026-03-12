@@ -2,8 +2,8 @@
 
 #include <d3d11.h>
 
-#include "lut.hpp"
-#include "utility.hpp"
+#include "core/lut.hpp"
+#include "core/utility.hpp"
 
 namespace {
 constinit LOG_HANDLE *logger = nullptr;

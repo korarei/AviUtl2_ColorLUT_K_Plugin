@@ -63,11 +63,12 @@ private:
         ComPtr<ID2D1DeviceContext2> ctx;
     } d2d;
 
+    ComPtr<ID2D1Effect> lut;
     ComPtr<ID2D1Effect> blend;
     D3D11_TEXTURE2D_DESC desc{};
     std::unordered_map<std::filesystem::path, ComPtr<ID2D1Effect>> cache{};
 
-    [[nodiscard]] bool load(const std::filesystem::path &path, ID2D1Effect **lut);
+    [[nodiscard]] bool load(const std::filesystem::path &path);
 };
 
 class Identity {

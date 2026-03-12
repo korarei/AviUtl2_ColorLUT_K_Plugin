@@ -196,29 +196,40 @@ HaldCLUT::save(const std::filesystem::path &path, const std::u8string &title) co
 
 void
 ColorLUT::setup(ID3D11Texture2D *tex) {
-    if (d2d.factory == nullptr) {
-        HR(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, IID_PPV_ARGS(&d2d.factory)));
-        HR(Blend::Register(d2d.factory.Get()));
+    try {
+        if (d2d.factory == nullptr) {
+            HR(D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, IID_PPV_ARGS(&d2d.factory)));
+            HR(Blend::Register(d2d.factory.Get()));
+        }
+
+        ComPtr<ID3D11Device> d3d_device;
+        tex->GetDevice(&d3d_device);
+        tex->GetDesc(&desc);
+
+        if (d3d.device != nullptr && SUCCEEDED(d3d.device->GetDeviceRemovedReason()) && d3d.device == d3d_device)
+            return;
+
+        d3d.device = d3d_device;
+        d3d.device->GetImmediateContext(d3d.ctx.ReleaseAndGetAddressOf());
+
+        ComPtr<IDXGIDevice> dxgi_device;
+        HR(d3d.device.As(&dxgi_device));
+
+        HR(d2d.factory->CreateDevice(dxgi_device.Get(), d2d.device.ReleaseAndGetAddressOf()));
+        HR(d2d.device->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, d2d.ctx.ReleaseAndGetAddressOf()));
+        HR(d2d.ctx->CreateEffect(CLSID_Blend, blend.ReleaseAndGetAddressOf()));
+
+        std::unordered_map<std::filesystem::path, ComPtr<ID2D1Effect>>{}.swap(cache);
+    } catch (...) {
+        d3d.device.Reset();
+        d3d.ctx.Reset();
+        d2d.factory.Reset();
+        d2d.device.Reset();
+        d2d.ctx.Reset();
+        blend.Reset();
+        std::unordered_map<std::filesystem::path, ComPtr<ID2D1Effect>>{}.swap(cache);
+        throw;
     }
-
-    ComPtr<ID3D11Device> d3d_device;
-    tex->GetDevice(&d3d_device);
-    tex->GetDesc(&desc);
-
-    if (d3d.device != nullptr && d3d.device == d3d_device)
-        return;
-
-    d3d.device = d3d_device;
-    d3d.device->GetImmediateContext(d3d.ctx.ReleaseAndGetAddressOf());
-
-    ComPtr<IDXGIDevice> dxgi_device;
-    HR(d3d.device.As(&dxgi_device));
-
-    HR(d2d.factory->CreateDevice(dxgi_device.Get(), d2d.device.ReleaseAndGetAddressOf()));
-    HR(d2d.device->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, d2d.ctx.ReleaseAndGetAddressOf()));
-    HR(d2d.ctx->CreateEffect(CLSID_Blend, blend.ReleaseAndGetAddressOf()));
-
-    std::unordered_map<std::filesystem::path, ComPtr<ID2D1Effect>>{}.swap(cache);
 }
 
 void
@@ -251,8 +262,7 @@ ColorLUT::wrap_texture(ID2D1Bitmap1 **bmp, ID3D11Texture2D *tex, D2D1_BITMAP_OPT
 bool
 ColorLUT::build_effect(ID2D1Effect **fx, ID2D1Bitmap1 *input, const std::filesystem::path &path, int mode,
                        float opacity, bool clamp) {
-    ComPtr<ID2D1Effect> lut;
-    if (!load(path, &lut))
+    if (!load(path))
         return false;
 
     lut->SetInput(0, input);
@@ -281,9 +291,9 @@ ColorLUT::copy(ID3D11Resource *dst, ID3D11Resource *src) const noexcept {
 }
 
 bool
-ColorLUT::load(const std::filesystem::path &path, ID2D1Effect **lut) {
+ColorLUT::load(const std::filesystem::path &path) {
     if (auto it = cache.find(path); it != cache.end()) {
-        HR(it->second.CopyTo(lut));
+        lut = it->second;
         return true;
     }
 
@@ -387,7 +397,7 @@ ColorLUT::load(const std::filesystem::path &path, ID2D1Effect **lut) {
     }
 
     cache.emplace(path, fx);
-    HR(fx.CopyTo(lut));
+    lut = fx;
     return true;
 }
 
@@ -407,7 +417,7 @@ Identity::setup(ID3D11Texture2D *tex) {
     tex->GetDevice(&d3d_device);
     tex->GetDesc(&desc);
 
-    if (device != nullptr && device == d3d_device)
+    if (device != nullptr && SUCCEEDED(device->GetDeviceRemovedReason()) && device == d3d_device)
         return;
 
     device = d3d_device;
