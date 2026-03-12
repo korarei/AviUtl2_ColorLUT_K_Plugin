@@ -315,22 +315,23 @@ ColorLUT::setup(ID3D11Texture2D *tex) {
             return;
 
         d3d.device = d3d_device;
-        d3d.device->GetImmediateContext(d3d.ctx.ReleaseAndGetAddressOf());
+        d3d.device->GetImmediateContext(d3d.context.ReleaseAndGetAddressOf());
 
         ComPtr<IDXGIDevice> dxgi_device;
         HR(d3d.device.As(&dxgi_device));
 
         HR(d2d.factory->CreateDevice(dxgi_device.Get(), d2d.device.ReleaseAndGetAddressOf()));
-        HR(d2d.device->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, d2d.ctx.ReleaseAndGetAddressOf()));
-        HR(d2d.ctx->CreateEffect(CLSID_Blend, blend.ReleaseAndGetAddressOf()));
+        HR(d2d.device->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, d2d.context.ReleaseAndGetAddressOf()));
+        HR(d2d.context->CreateEffect(CLSID_D2D1LookupTable3D, lut.ReleaseAndGetAddressOf()));
+        HR(d2d.context->CreateEffect(CLSID_Blend, blend.ReleaseAndGetAddressOf()));
 
         std::unordered_map<std::filesystem::path, ComPtr<ID2D1Effect>>{}.swap(cache);
     } catch (...) {
         d3d.device.Reset();
-        d3d.ctx.Reset();
+        d3d.context.Reset();
         d2d.factory.Reset();
         d2d.device.Reset();
-        d2d.ctx.Reset();
+        d2d.context.Reset();
         blend.Reset();
         std::unordered_map<std::filesystem::path, ComPtr<ID2D1Effect>>{}.swap(cache);
         throw;
@@ -345,7 +346,7 @@ ColorLUT::create_texture(ID3D11Texture2D **tex) const {
 
     ComPtr<ID3D11RenderTargetView> rtv;
     HR(d3d.device->CreateRenderTargetView(*tex, nullptr, &rtv));
-    d3d.ctx->ClearRenderTargetView(rtv.Get(), clear);
+    d3d.context->ClearRenderTargetView(rtv.Get(), clear);
 }
 
 void
@@ -361,14 +362,14 @@ ColorLUT::wrap_texture(ID2D1Bitmap1 **bmp, ID3D11Texture2D *tex, D2D1_BITMAP_OPT
             .colorContext = nullptr,
     };
 
-    HR(d2d.ctx->CreateBitmapFromDxgiSurface(surface.Get(), &props, bmp));
+    HR(d2d.context->CreateBitmapFromDxgiSurface(surface.Get(), &props, bmp));
 }
 
 bool
 ColorLUT::configure(const std::filesystem::path &path, int mode, double opacity, bool clamp) {
     if (auto it = cache.find(path); it != cache.end())
         lut = it->second;
-    else if (load(lut.ReleaseAndGetAddressOf(), d2d.ctx.Get(), path))
+    else if (load(lut.ReleaseAndGetAddressOf(), d2d.context.Get(), path))
         cache.emplace(path, lut);
     else
         return false;
@@ -385,16 +386,16 @@ ColorLUT::draw(ID2D1Image *target, ID2D1Image *input) const {
     lut->SetInput(0, input);
     blend->SetInputEffect(0, lut.Get());
     blend->SetInput(1, input);
-    d2d.ctx->SetTarget(target);
-    d2d.ctx->BeginDraw();
-    d2d.ctx->DrawImage(blend.Get());
-    HR(d2d.ctx->EndDraw());
-    d2d.ctx->SetTarget(nullptr);
+    d2d.context->SetTarget(target);
+    d2d.context->BeginDraw();
+    d2d.context->DrawImage(blend.Get());
+    HR(d2d.context->EndDraw());
+    d2d.context->SetTarget(nullptr);
 }
 
 void
 ColorLUT::copy(ID3D11Resource *dst, ID3D11Resource *src) const noexcept {
-    d3d.ctx->CopyResource(dst, src);
+    d3d.context->CopyResource(dst, src);
 }
 
 void
@@ -411,30 +412,29 @@ void
 Identity::setup(ID3D11Texture2D *tex) {
     ComPtr<ID3D11Device> d3d_device;
     tex->GetDevice(&d3d_device);
-    tex->GetDesc(&desc);
+    tex->GetDesc(&desc.texture);
 
     if (device != nullptr && SUCCEEDED(device->GetDeviceRemovedReason()) && device == d3d_device)
         return;
 
     device = d3d_device;
-    device->GetImmediateContext(ctx.ReleaseAndGetAddressOf());
+    device->GetImmediateContext(context.ReleaseAndGetAddressOf());
+    HR(device->CreateComputeShader(shader::Identity::cs.data(), shader::Identity::cs.size_bytes(), nullptr,
+                                   identity.ReleaseAndGetAddressOf()));
 }
 
 bool
 Identity::draw(ID3D11Texture2D *tex) {
-    struct alignas(16) Params {
-        uint32_t level;
-        uint32_t _padding[3];
-    };
-
     setup(tex);
 
-    if (desc.Format != DXGI_FORMAT_R16G16B16A16_FLOAT)
+    if (desc.texture.Format != DXGI_FORMAT_R16G16B16A16_FLOAT)
         return false;
 
-    const auto level = static_cast<uint32_t>(std::round(std::cbrt(static_cast<double>(desc.Width))));
+    const auto &w = desc.texture.Width;
+    const auto &h = desc.texture.Height;
+    const auto level = static_cast<uint32_t>(std::round(std::cbrt(static_cast<double>(w))));
 
-    if (desc.Width != desc.Height || desc.Width < 8u || desc.Width != level * level * level)
+    if (w != h || w < 8u || w != level * level * level)
         return false;
 
     const Params params{
@@ -442,37 +442,24 @@ Identity::draw(ID3D11Texture2D *tex) {
             ._padding = {},
     };
 
-    D3D11_BUFFER_DESC buffer_desc{};
-    buffer_desc.ByteWidth = sizeof(Params);
-    buffer_desc.Usage = D3D11_USAGE_DEFAULT;
-    buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-
     D3D11_SUBRESOURCE_DATA data{};
     data.pSysMem = &params;
 
     ComPtr<ID3D11Buffer> buffer;
-    HR(device->CreateBuffer(&buffer_desc, &data, &buffer));
-
-    D3D11_UNORDERED_ACCESS_VIEW_DESC uav_desc{};
-    uav_desc.Format = desc.Format;
-    uav_desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-    uav_desc.Texture2D.MipSlice = 0u;
+    HR(device->CreateBuffer(&desc.buffer, &data, &buffer));
 
     ComPtr<ID3D11UnorderedAccessView> uav;
-    HR(device->CreateUnorderedAccessView(tex, &uav_desc, &uav));
+    HR(device->CreateUnorderedAccessView(tex, &desc.uav, &uav));
 
-    ComPtr<ID3D11ComputeShader> cs;
-    HR(device->CreateComputeShader(shader::Identity::cs.data(), shader::Identity::cs.size_bytes(), nullptr, &cs));
+    context->CSSetShader(identity.Get(), nullptr, 0u);
+    context->CSSetConstantBuffers(0u, 1u, buffer.GetAddressOf());
+    context->CSSetUnorderedAccessViews(0u, 1u, uav.GetAddressOf(), nullptr);
+    context->Dispatch((w + 15u) / 16u, (h + 15u) / 16u, 1u);
 
-    ctx->CSSetShader(cs.Get(), nullptr, 0u);
-    ctx->CSSetConstantBuffers(0u, 1u, buffer.GetAddressOf());
-    ctx->CSSetUnorderedAccessViews(0u, 1u, uav.GetAddressOf(), nullptr);
-    ctx->Dispatch((desc.Width + 15u) / 16u, (desc.Height + 15u) / 16u, 1u);
-
-    ID3D11Buffer *null_buffer = nullptr;
-    ID3D11UnorderedAccessView *null_uav = nullptr;
-    ctx->CSSetConstantBuffers(0u, 1u, &null_buffer);
-    ctx->CSSetUnorderedAccessViews(0u, 1u, &null_uav, nullptr);
-    ctx->CSSetShader(nullptr, nullptr, 0u);
+    constexpr ID3D11Buffer *null_buffer = nullptr;
+    constexpr ID3D11UnorderedAccessView *null_uav = nullptr;
+    context->CSSetConstantBuffers(0u, 1u, &null_buffer);
+    context->CSSetUnorderedAccessViews(0u, 1u, &null_uav, nullptr);
+    context->CSSetShader(nullptr, nullptr, 0u);
     return true;
 }

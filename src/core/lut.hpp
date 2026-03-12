@@ -55,13 +55,13 @@ private:
 
     struct {
         ComPtr<ID3D11Device> device;
-        ComPtr<ID3D11DeviceContext> ctx;
+        ComPtr<ID3D11DeviceContext> context;
     } d3d;
 
     struct {
         ComPtr<ID2D1Factory3> factory;
         ComPtr<ID2D1Device2> device;
-        ComPtr<ID2D1DeviceContext2> ctx;
+        ComPtr<ID2D1DeviceContext2> context;
     } d2d;
 
     ComPtr<ID2D1Effect> lut;
@@ -78,9 +78,31 @@ private:
     template <class T>
     using ComPtr = Microsoft::WRL::ComPtr<T>;
 
+    struct alignas(16) Params {
+        uint32_t level;
+        uint32_t _padding[3];
+    };
+
+    struct {
+        D3D11_TEXTURE2D_DESC texture = {};
+        const D3D11_BUFFER_DESC buffer = {
+                .ByteWidth = sizeof(Params),
+                .Usage = D3D11_USAGE_DEFAULT,
+                .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+                .CPUAccessFlags = 0u,
+                .MiscFlags = 0u,
+                .StructureByteStride = 0u,
+        };
+        const D3D11_UNORDERED_ACCESS_VIEW_DESC uav = {
+                .Format = DXGI_FORMAT_R16G16B16A16_FLOAT,
+                .ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D,
+                .Texture2D = {.MipSlice = 0u},
+        };
+    } desc;
+
     ComPtr<ID3D11Device> device;
-    ComPtr<ID3D11DeviceContext> ctx;
-    D3D11_TEXTURE2D_DESC desc{};
+    ComPtr<ID3D11DeviceContext> context;
+    ComPtr<ID3D11ComputeShader> identity;
 
     void setup(ID3D11Texture2D *tex);
 };
