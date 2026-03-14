@@ -30,10 +30,10 @@ report-issue = "https://github.com/korarei/AviUtl2_ColorLUT_K_Plugin/issues"
 summary = "AviUtl ExEdit2でLUTファイルを扱えるようにするプラグイン"
 description = """
 以下の機能が追加される
-- ColorLUT_K (色調整): LUTファイルを読み込み映像の色を調整
+- ColorLUT_K (色調整): LUTファイルを読み込み，映像の色を調整するフィルタ
 - HaldCLUT_K (LUT): Hald CLUTのメディアオブジェクト
-- LUTファイル出力: 画像からLUTをエクスポート
-- LUTフィルタをレイヤーに追加: LUTファイルをD&Dでレイヤー追加
+- LUTファイル出力: 画像をLUTファイルに変換，出力する拡張機能
+- LUTフィルタをレイヤーに追加: LUTファイルをD&Dでレイヤーに追加する拡張機能
 """
 
 [[release.contents.extensions]]
