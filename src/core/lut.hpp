@@ -34,6 +34,7 @@ struct HaldCLUT {
     [[nodiscard]] bool save(const std::filesystem::path &path, const std::u8string &title) const;
 };
 
+// setupが呼ばれない場合にそれ以外の描画系メソッドを使用するとやばいので今後どうにかしたい
 class ColorLUT {
 public:
     [[nodiscard]] static bool load(ID2D1Effect **lut, ID2D1DeviceContext2 *ctx, const std::filesystem::path &path);

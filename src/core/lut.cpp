@@ -411,17 +411,23 @@ ColorLUT::reload(const std::filesystem::path &path) noexcept {
 
 void
 Identity::setup(ID3D11Texture2D *tex) {
-    ComPtr<ID3D11Device> d3d_device;
-    tex->GetDevice(&d3d_device);
-    tex->GetDesc(&desc.texture);
+    try {
+        ComPtr<ID3D11Device> d3d_device;
+        tex->GetDevice(&d3d_device);
+        tex->GetDesc(&desc.texture);
 
-    if (device != nullptr && SUCCEEDED(device->GetDeviceRemovedReason()) && device == d3d_device)
-        return;
+        if (device != nullptr && SUCCEEDED(device->GetDeviceRemovedReason()) && device == d3d_device)
+            return;
 
-    device = d3d_device;
-    device->GetImmediateContext(context.ReleaseAndGetAddressOf());
-    HR(device->CreateComputeShader(shader::Identity::cs.data(), shader::Identity::cs.size_bytes(), nullptr,
-                                   identity.ReleaseAndGetAddressOf()));
+        device = d3d_device;
+        device->GetImmediateContext(context.ReleaseAndGetAddressOf());
+        HR(device->CreateComputeShader(shader::Identity::cs.data(), shader::Identity::cs.size_bytes(), nullptr,
+                                       identity.ReleaseAndGetAddressOf()));
+    } catch (...) {
+        device.Reset();
+        context.Reset();
+        identity.Reset();
+    }
 }
 
 bool
