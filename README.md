@@ -11,19 +11,16 @@ AviUtl ExEdit2でLUTファイルを扱えるようにするプラグイン．
 
 ## 動作確認
 
-- [AviUtl ExEdit2 beta36a](https://spring-fragrance.mints.ne.jp/aviutl/)
+- [AviUtl ExEdit2 beta37](https://spring-fragrance.mints.ne.jp/aviutl/)
 
 > [!CAUTION]
-> beta36以降必須．
+> beta37以降必須．
 
 ## 導入・更新・削除
 
 初期配置場所は`色調整`と`LUT`である．
 
 `オブジェクト追加メニューの設定`から`ラベル`を変更することで任意の場所へ移動可能．
-
-> [!IMPORTANT]
-> 同一ファイルが複数個所に存在しないようにすること．
 
 ### 導入・更新
 
