@@ -42,43 +42,48 @@ constexpr wchar_t xml[] =
 // pwsh: [Guid]::NewGuid()
 DEFINE_GUID(GUID_BlendPS, 0xace224ae, 0x323f, 0x4015, 0x96, 0xe9, 0x47, 0xed, 0x7e, 0x77, 0x91, 0x04);
 
-ULONG
-Blend::AddRef() noexcept { return static_cast<ULONG>(InterlockedIncrement(&ref_count)); }
+// MSのチュートリアルによると1つのスレッドからしか呼ばれないのでInterlockedは不要
+IFACEMETHODIMP_(ULONG)
+Blend::AddRef() noexcept { return ++ref_count; }
 
-ULONG
+IFACEMETHODIMP_(ULONG)
 Blend::Release() noexcept {
-    const LONG r = InterlockedDecrement(&ref_count);
-    if (r == 0)
+    if (--ref_count == 0u) {
         delete this;
+        return 0u;
+    }
 
-    return static_cast<ULONG>(r);
+    return ref_count;
 }
 
-HRESULT
+IFACEMETHODIMP
 Blend::QueryInterface(REFIID riid, void **ppv) noexcept {
     if (!ppv)
         return E_POINTER;
 
-    if (riid == __uuidof(IUnknown)) {
-        *ppv = static_cast<IUnknown *>(static_cast<ID2D1EffectImpl *>(this));
-    } else if (riid == __uuidof(ID2D1EffectImpl)) {
-        *ppv = static_cast<ID2D1EffectImpl *>(this);
+    *ppv = nullptr;
+
+    if (riid == __uuidof(ID2D1EffectImpl)) {
+        *ppv = reinterpret_cast<ID2D1EffectImpl *>(this);
     } else if (riid == __uuidof(ID2D1DrawTransform)) {
         *ppv = static_cast<ID2D1DrawTransform *>(this);
     } else if (riid == __uuidof(ID2D1Transform)) {
         *ppv = static_cast<ID2D1Transform *>(this);
     } else if (riid == __uuidof(ID2D1TransformNode)) {
         *ppv = static_cast<ID2D1TransformNode *>(this);
+    } else if (riid == __uuidof(IUnknown)) {
+        *ppv = this;
     } else {
-        *ppv = nullptr;
         return E_NOINTERFACE;
     }
 
-    AddRef();
+    if (*ppv != nullptr)
+        AddRef();
+
     return S_OK;
 }
 
-HRESULT
+IFACEMETHODIMP
 Blend::Initialize(ID2D1EffectContext *ctx, ID2D1TransformGraph *graph) noexcept {
     HR(ctx->LoadPixelShader(GUID_BlendPS, shader::Blend::ps.data(),
                             static_cast<uint32_t>(shader::Blend::ps.size_bytes())));
@@ -86,7 +91,7 @@ Blend::Initialize(ID2D1EffectContext *ctx, ID2D1TransformGraph *graph) noexcept 
     return graph->SetSingleTransformNode(this);
 }
 
-HRESULT
+IFACEMETHODIMP
 Blend::PrepareForRender(D2D1_CHANGE_TYPE change) noexcept {
     if (draw_info == nullptr)
         return E_FAIL;
@@ -97,15 +102,13 @@ Blend::PrepareForRender(D2D1_CHANGE_TYPE change) noexcept {
     return S_OK;
 }
 
-HRESULT
+IFACEMETHODIMP
 Blend::SetGraph([[maybe_unused]] ID2D1TransformGraph *graph) noexcept { return S_OK; }
 
-uint32_t
-Blend::GetInputCount() const noexcept {
-    return 2u;
-}
+IFACEMETHODIMP_(uint32_t)
+Blend::GetInputCount() const noexcept { return 2u; }
 
-HRESULT
+IFACEMETHODIMP
 Blend::MapOutputRectToInputRects(const D2D1_RECT_L *out_rect, D2D1_RECT_L *in_rects, uint32_t count) const noexcept {
     if (count != 2u)
         return E_INVALIDARG;
@@ -115,7 +118,7 @@ Blend::MapOutputRectToInputRects(const D2D1_RECT_L *out_rect, D2D1_RECT_L *in_re
     return S_OK;
 }
 
-HRESULT
+IFACEMETHODIMP
 Blend::MapInputRectsToOutputRect(const D2D1_RECT_L *in_rects, [[maybe_unused]] const D2D1_RECT_L *in_opqs,
                                  uint32_t count, D2D1_RECT_L *out_rect, D2D1_RECT_L *out_opq) noexcept {
     if (count != 2u)
@@ -126,11 +129,11 @@ Blend::MapInputRectsToOutputRect(const D2D1_RECT_L *in_rects, [[maybe_unused]] c
     out_rect->right = std::max(in_rects[0].right, in_rects[1].right);
     out_rect->bottom = std::max(in_rects[0].bottom, in_rects[1].bottom);
 
-    *out_opq = {0, 0, 0, 0};
+    ZeroMemory(out_opq, sizeof(*out_opq));
     return S_OK;
 }
 
-HRESULT
+IFACEMETHODIMP
 Blend::MapInvalidRect(uint32_t idx, D2D1_RECT_L in_rect, D2D1_RECT_L *out_rect) const noexcept {
     if (idx >= 2u)
         return E_INVALIDARG;
@@ -139,7 +142,7 @@ Blend::MapInvalidRect(uint32_t idx, D2D1_RECT_L in_rect, D2D1_RECT_L *out_rect) 
     return S_OK;
 }
 
-HRESULT
+IFACEMETHODIMP
 Blend::SetDrawInfo(ID2D1DrawInfo *info) noexcept {
     draw_info = info;
 
@@ -183,8 +186,7 @@ Blend::SetClamp(BOOL v) noexcept {
     return S_OK;
 }
 
-HRESULT
-Blend::CreateEffect(IUnknown **effect) {
+HRESULT _stdcall Blend::CreateEffect(IUnknown **effect) {
     *effect = static_cast<ID2D1EffectImpl *>(new (std::nothrow) Blend());
     return (*effect != nullptr) ? S_OK : E_OUTOFMEMORY;
 }

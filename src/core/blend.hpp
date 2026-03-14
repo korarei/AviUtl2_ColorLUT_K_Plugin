@@ -7,6 +7,7 @@
 #include <d2d1effecthelpers.h>
 #include <guiddef.h>
 #include <windows.h>
+#include <winnt.h>
 #include <wrl/client.h>
 
 // pwsh: [Guid]::NewGuid()
@@ -20,24 +21,25 @@ public:
         Clamp,
     };
 
-    static HRESULT CreateEffect(IUnknown **effect);
+    // x64ならstdcallいらない気がするが一応
+    static HRESULT _stdcall CreateEffect(IUnknown **effect);
     static HRESULT Register(ID2D1Factory3 *factory);
 
-    ULONG AddRef() noexcept override;
-    ULONG Release() noexcept override;
-    HRESULT QueryInterface(REFIID riid, void **ppv) noexcept override;
+    IFACEMETHODIMP_(ULONG) AddRef() noexcept override;
+    IFACEMETHODIMP_(ULONG) Release() noexcept override;
+    IFACEMETHODIMP QueryInterface(REFIID riid, void **ppv) noexcept override;
 
-    HRESULT Initialize(ID2D1EffectContext *ctx, ID2D1TransformGraph *graph) noexcept override;
-    HRESULT PrepareForRender(D2D1_CHANGE_TYPE change) noexcept override;
-    HRESULT SetGraph(ID2D1TransformGraph *graph) noexcept override;
+    IFACEMETHODIMP Initialize(ID2D1EffectContext *ctx, ID2D1TransformGraph *graph) noexcept override;
+    IFACEMETHODIMP PrepareForRender(D2D1_CHANGE_TYPE change) noexcept override;
+    IFACEMETHODIMP SetGraph(ID2D1TransformGraph *graph) noexcept override;
 
-    uint32_t GetInputCount() const noexcept override;
-    HRESULT MapOutputRectToInputRects(const D2D1_RECT_L *out_rect, D2D1_RECT_L *in_rects,
-                                      uint32_t count) const noexcept override;
-    HRESULT MapInputRectsToOutputRect(const D2D1_RECT_L *in_rects, const D2D1_RECT_L *in_opqs, uint32_t count,
-                                      D2D1_RECT_L *out_rect, D2D1_RECT_L *out_opq) noexcept override;
-    HRESULT MapInvalidRect(uint32_t idx, D2D1_RECT_L in_rect, D2D1_RECT_L *out_rect) const noexcept override;
-    HRESULT SetDrawInfo(ID2D1DrawInfo *info) noexcept override;
+    IFACEMETHODIMP_(uint32_t) GetInputCount() const noexcept override;
+    IFACEMETHODIMP MapOutputRectToInputRects(const D2D1_RECT_L *out_rect, D2D1_RECT_L *in_rects,
+                                             uint32_t count) const noexcept override;
+    IFACEMETHODIMP MapInputRectsToOutputRect(const D2D1_RECT_L *in_rects, const D2D1_RECT_L *in_opqs, uint32_t count,
+                                             D2D1_RECT_L *out_rect, D2D1_RECT_L *out_opq) noexcept override;
+    IFACEMETHODIMP MapInvalidRect(uint32_t idx, D2D1_RECT_L in_rect, D2D1_RECT_L *out_rect) const noexcept override;
+    IFACEMETHODIMP SetDrawInfo(ID2D1DrawInfo *info) noexcept override;
 
     int GetMode() const noexcept;
     float GetOpacity() const noexcept;
@@ -60,5 +62,5 @@ private:
     } params;
 
     ComPtr<ID2D1DrawInfo> draw_info;
-    LONG ref_count = 1;
+    ULONG ref_count = 1u;
 };
