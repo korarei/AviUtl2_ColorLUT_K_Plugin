@@ -123,7 +123,7 @@ HaldCLUT::load(const std::filesystem::path &path) {
     if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
         return false;
 
-    // CoInitializeExは呼ばれているはず
+    // CoInitializeExは呼ばれているはず (試したCoInitializeExは失敗するので呼ばれてるっぽい)
     // 呼ばれていない場合は以下の処理でランタイムエラー
     ComPtr<IWICImagingFactory2> factory;
     HR(CoCreateInstance(CLSID_WICImagingFactory2, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&factory)));
@@ -135,14 +135,25 @@ HaldCLUT::load(const std::filesystem::path &path) {
     ComPtr<IWICBitmapFrameDecode> frame;
     HR(decoder->GetFrame(0u, &frame));
 
-    // sRGBに強制的に変換されるはず
-    // ColorContextがない場合はUINTならそのまま (確認済) でFloatならscRGB->sRGB変換されるはず (未確認)
-    // 多くの場合はUINTかつsRGB前提なので問題ないはず
-    // .tifにはFloatが存在するが，対応ソフトが少ないので考慮しない (GIMP, Blender, Clip Studio Paintなどは未対応)
+    WICPixelFormatGUID format;
+    HR(frame->GetPixelFormat(&format));
+
+    ComPtr<IWICComponentInfo> info;
+    HR(factory->CreateComponentInfo(format, &info));
+
+    ComPtr<IWICPixelFormatInfo2> pixel_info;
+    HR(info.As(&pixel_info));
+
+    WICPixelFormatNumericRepresentation repr;
+    HR(pixel_info->GetNumericRepresentation(&repr));
+
+    const bool is_hdr =
+            repr == WICPixelFormatNumericRepresentationFloat || repr == WICPixelFormatNumericRepresentationFixed;
+    const auto target = is_hdr ? GUID_WICPixelFormat128bppRGBAFloat : GUID_WICPixelFormat64bppRGBA;
+
     ComPtr<IWICFormatConverter> converter;
     HR(factory->CreateFormatConverter(&converter));
-    HR(converter->Initialize(frame.Get(), GUID_WICPixelFormat64bppRGBA, WICBitmapDitherTypeNone, nullptr, 0.0,
-                             WICBitmapPaletteTypeCustom));
+    HR(converter->Initialize(frame.Get(), target, WICBitmapDitherTypeNone, nullptr, 0.0, WICBitmapPaletteTypeCustom));
 
     HR(converter->GetSize(&w, &h));
     level = static_cast<uint32_t>(std::round(std::cbrt(static_cast<double>(w))));
@@ -151,13 +162,19 @@ HaldCLUT::load(const std::filesystem::path &path) {
         return false;
 
     const size_t size = w * h;
-    std::vector<RGBA16> buffer(size);
-    const uint32_t stride = w * sizeof(RGBA16);
-    HR(converter->CopyPixels(nullptr, stride, stride * h, reinterpret_cast<BYTE *>(buffer.data())));
-
     data.resize(size);
-    const auto idx = std::views::iota(0uz, size);
-    std::for_each(std::execution::par_unseq, idx.begin(), idx.end(), [&](size_t i) { data[i] = RGBAF32(buffer[i]); });
+
+    if (is_hdr) {
+        const uint32_t stride = w * sizeof(RGBAF32);
+        HR(converter->CopyPixels(nullptr, stride, stride * h, reinterpret_cast<BYTE *>(data.data())));
+    } else {
+        std::vector<RGBA16> buf(size);
+        const uint32_t stride = w * sizeof(RGBA16);
+        HR(converter->CopyPixels(nullptr, stride, stride * h, reinterpret_cast<BYTE *>(buf.data())));
+
+        const auto idx = std::views::iota(0uz, size);
+        std::for_each(std::execution::par_unseq, idx.begin(), idx.end(), [&](size_t i) { data[i] = RGBAF32(buf[i]); });
+    }
 
     return true;
 }
