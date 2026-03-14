@@ -2,8 +2,10 @@
 
 #include <d3d11.h>
 
-#include "lut.hpp"
-#include "utility.hpp"
+#include <plugin2.h>
+
+#include "core/lut.hpp"
+#include "core/utility.hpp"
 
 namespace {
 constinit LOG_HANDLE *logger = nullptr;
@@ -39,7 +41,7 @@ func_proc_video(FILTER_PROC_VIDEO *video) {
 }
 }  // namespace
 
-FILTER_PLUGIN_TABLE identity::info = {
+constinit FILTER_PLUGIN_TABLE identity::info = {
         .flag = FILTER_PLUGIN_TABLE::FLAG_VIDEO | FILTER_PLUGIN_TABLE::FLAG_INPUT,
         .name = L"HaldCLUT_K",
         .label = L"LUT",

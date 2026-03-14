@@ -13,4 +13,9 @@ inline std::u8string
 to_u8str(const std::wstring &src) {
     return std::filesystem::path(src).u8string();
 }
+
+inline std::string
+to_str(const std::u8string &src) {
+    return std::string(src.begin(), src.end());
+}
 }  // namespace string

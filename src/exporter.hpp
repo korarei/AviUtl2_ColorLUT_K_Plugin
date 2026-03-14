@@ -1,6 +1,9 @@
 #pragma once
 
-#include "common.hpp"
+#include <windows.h>
+
+#include <logger2.h>
+#include <output2.h>
 
 namespace exporter {
 extern OUTPUT_PLUGIN_TABLE info;

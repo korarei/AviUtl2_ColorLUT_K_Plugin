@@ -6,92 +6,29 @@ project(ColorLUT_K VERSION ${VERSION} LANGUAGES CXX)
 
 # Path settings.
 set(AVIUTL2_SDK "${CMAKE_SOURCE_DIR}/external/aviutl2_sdk/include/aviutl2_sdk")
-set(SHADER_SRC "${CMAKE_CURRENT_SOURCE_DIR}/shaders")
-set(SHADER_DST "${CMAKE_CURRENT_BINARY_DIR}/shaders")
-file(MAKE_DIRECTORY "${SHADER_DST}")
+file(GLOB SHADER_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.hlsl")
 
-# Find fxc.exe for shader compilation.
-find_program(FXC_EXECUTABLE fxc)
-
-if(NOT FXC_EXECUTABLE)
-    message(FATAL_ERROR "fxc.exe not found.")
-endif()
-
-# Compute shaders (cs_5_0).
-file(GLOB CS_SHADERS CONFIGURE_DEPENDS "${SHADER_SRC}/*.cs.hlsl")
-
-set(SHADER_HEADERS "")
-foreach(SHADER IN LISTS CS_SHADERS)
-    get_filename_component(FILE_NAME "${SHADER}" NAME_WE)
-    set(SHADER_HEADER "${SHADER_DST}/${FILE_NAME}.cs.h")
-
-    add_custom_command(
-        OUTPUT "${SHADER_HEADER}"
-        COMMAND "${FXC_EXECUTABLE}"
-                /T cs_5_0
-                /E main
-                /O3
-                /WX
-                /Qstrip_reflect
-                /Qstrip_debug
-                /Fh "${SHADER_HEADER}"
-                /Vn "g_${FILE_NAME}_cs"
-                "${SHADER}"
-        DEPENDS "${SHADER}"
-        VERBATIM
-    )
-
-    list(APPEND SHADER_HEADERS "${SHADER_HEADER}")
-endforeach()
-
-# Pixel shaders (ps_5_0).
-file(GLOB PS_SHADERS CONFIGURE_DEPENDS "${SHADER_SRC}/*.ps.hlsl")
-
-foreach(SHADER IN LISTS PS_SHADERS)
-    get_filename_component(FILE_NAME "${SHADER}" NAME_WE)
-    set(SHADER_HEADER "${SHADER_DST}/${FILE_NAME}.ps.h")
-
-    add_custom_command(
-        OUTPUT "${SHADER_HEADER}"
-        COMMAND "${FXC_EXECUTABLE}"
-                /T ps_5_0
-                /E main
-                /O3
-                /WX
-                /Qstrip_reflect
-                /Qstrip_debug
-                /Fh "${SHADER_HEADER}"
-                /Vn "g_${FILE_NAME}_ps"
-                "${SHADER}"
-        DEPENDS "${SHADER}"
-        VERBATIM
-    )
-
-    list(APPEND SHADER_HEADERS "${SHADER_HEADER}")
-endforeach()
-
-# Create a custom target for shaders.
-add_custom_target(Shaders DEPENDS ${SHADER_HEADERS})
+# Include scripts.
+include(cmake/CompileShaders.cmake)
 
 # Main target definition.
 add_library(${PROJECT_NAME} SHARED
     main.def
     main.cpp
-    blend.cpp
-    lut.cpp
     filter.cpp
     identity.cpp
     exporter.cpp
-    # importer.cpp
+    importer.cpp
+    core/blend.cpp
+    core/lut.cpp
 )
 
-# Ensure shaders are built before the main target.
-add_dependencies(${PROJECT_NAME} Shaders)
+# Shader compilation.
+compile_shaders(${PROJECT_NAME} "${SHADER_SOURCES}")
 
 # Include directories.
 target_include_directories(${PROJECT_NAME} PRIVATE
     "${AVIUTL2_SDK}"
-    "${SHADER_DST}"
 )
 
 # Library Link.

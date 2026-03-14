@@ -1,8 +1,6 @@
 // D2DのBlendEffectとは違いHDR前提の合成
-Texture2D fg : register(t0);
-Texture2D bg : register(t1);
-SamplerState fg_smp : register(s0);
-SamplerState bg_smp : register(s1);
+Texture2D tex[2] : register(t0);
+SamplerState smp[2] : register(s0);
 
 cbuffer params : register(b0) {
     int mode;
@@ -15,25 +13,63 @@ static const float eps = 1.0e-4;
 struct PS_Input {
     float4 dummy : SV_Position; // D2Dの仕様で使用不可
     float4 pos : SCENE_POSITION;
-    float4 fg_uv : TEXCOORD0;
-    float4 bg_uv : TEXCOORD1;
+    float4 uv[2] : TEXCOORD0;
 };
+
+
+/*
+The following function is a modified version of pcg4d function
+Original implementation by Mark Jarzynski & Marc Olano
+https://github.com/markjarzynski/PCG3D/blob/master/LICENSE
+*/
+
+uint4
+pcg4d(uint4 v) {
+    v = v * 1664525u + 1013904223u;  
+
+    v.x += v.y * v.w;
+    v.y += v.z * v.x;
+    v.z += v.x * v.y;
+    v.w += v.y * v.z;
+
+    v = v ^ v >> 16u;
+
+    v.x += v.y * v.w;
+    v.y += v.z * v.x;
+    v.z += v.x * v.y;
+    v.w += v.y * v.z;
+
+    return v;
+}
+
+inline float
+hash(float4 i) {
+    const uint4 v = pcg4d(uint4(i));
+    return dot(v, 1u) / 4294967295.0;
+}
 
 float3
 rgb2hsy(float3 c) {
-    const float4 k = float4(0.0, -1.0 * rcp(3.0), 2.0 * rcp(3.0), -1.0);
-    float4 p = lerp(float4(c.bg, k.wz), float4(c.gb, k.xy), step(c.b, c.g));
-    float4 q = lerp(float4(p.xyw, c.r), float4(c.r, p.yzx), step(p.x, c.r));
-    float s = q.x - min(q.w, q.y);
-    float h = abs(mad(q.w - q.y, rcp(mad(6.0, s, eps)), q.z));
-    float y = dot(c, float3(0.3, 0.59, 0.11));
+    const float4 k = float4(0.0, -rcp(3.0), 2.0 * rcp(3.0), -1.0);
+    const float4 p = lerp(float4(c.bg, k.wz), float4(c.gb, k.xy), step(c.b, c.g));
+    const float4 q = lerp(float4(p.xyw, c.r), float4(c.r, p.yzx), step(p.x, c.r));
+    const float s = q.x - min(q.w, q.y);
+    const float h = abs(mad(q.w - q.y, rcp(max(6.0 * s, eps)), q.z));
+    const float y = dot(c, float3(0.3, 0.59, 0.11));
     return float3(h, s, y);
 }
 
 float3
 hsy2rgb(float3 c) {
-    float3 rgb = saturate(float3(abs(mad(c.x, 6.0, -3.0)) - 1.0, 2.0 - abs(mad(c.x, 6.0, -2.0)), 2.0 - abs(mad(c.x, 6.0, -4.0)))) * c.y;
-    return rgb + c.z - dot(rgb, float3(0.3, 0.59, 0.11));
+    const float4 k = float4(1.0, 2.0 * rcp(3.0), rcp(3.0), 3.0);
+    const float3 p = abs(frac(c.xxx + k.xyz) * 6.0 - k.www);
+    const float3 q = saturate(p - k.xxx) * c.y;
+    c = q + c.z - dot(q, float3(0.3, 0.59, 0.11));
+    const float l = dot(c, float3(0.3, 0.59, 0.11));
+    const float n = min(min(c.r, c.g), c.b);
+    const float x = max(max(c.r, c.g), c.b);
+    c = mad(c - l, min(1.0, l * rcp(max(l - n, eps))), l);
+    return mad(c - l, min(1.0, (1.0 - l) * rcp(max(x - l, eps))), l);
 }
 
 inline float3
@@ -91,18 +127,20 @@ overlay(float3 base, float3 src) {
     return lerp(2.0 * base * src, mad(mad(2.0, base, -2.0), 1.0 - src, 1.0), step(0.5, base));
 }
 
-/*
+
 inline float3
 soft_light(float3 base, float3 src) {
-    const float3 d = lerp(sqrt(max(base, 0.0)), ((16.0 * base - 12.0) * base + 4.0) * base, step(base, 0.25));
-    return lerp(base + (2.0 * src - 1.0) * (d - base), base - (1.0 - 2.0 * src) * base * (1.0 - base), step(src, 0.5));
+    const float3 d = lerp(sqrt(max(base, 0.0)), mad(mad(16.0, base, -12.0), base, 4.0) * base, step(base, 0.25));
+    const float3 p = mad(2.0, src, -1.0);
+    return lerp(mad(p, (d - base), base), mad(p, mad(base, -base, base), base), step(src, 0.5));
 }
-*/
 
+/*
 inline float3
 soft_light(float3 base, float3 src) {
     return mad(mad(base, -base, base), mad(2.0, src, -1.0), base);
 }
+*/
 
 inline float3
 hard_light(float3 base, float3 src) {
@@ -171,16 +209,18 @@ luminosity(float3 base, float3 src) {
 
 float4
 main(PS_Input input) : SV_Target {
-    float4 src = fg.Sample(fg_smp, input.fg_uv.xy);
-    float4 base  = bg.Sample(bg_smp, input.bg_uv.xy);
+    float4 src = saturate(tex[0].Sample(smp[0], input.uv[0].xy));
+    float4 base  = saturate(tex[1].Sample(smp[1], input.uv[1].xy));
 
     if (mode == 0) {
         src *= opacity;
-        const float4 output = mad(1.0 - src.a, base, src);
-        return lerp(output, saturate(output), clamp_output);
+        return mad(1.0 - src.a, base, src);
+    } else if (mode == 1) {
+        const float4 output = saturate(float4(src.rgb * rcp(max(src.a, eps)), 1.0));
+        return lerp(base, output, step(hash(input.pos) + eps, src.a * opacity));
     }
 
-    src  = float4(src.rgb  * rcp(max(src.a,  eps)), src.a * opacity);
+    src  = float4(src.rgb  * rcp(max(src.a, eps)), src.a * opacity);
     base = float4(base.rgb * rcp(max(base.a, eps)), base.a);
 
     float3 blended;

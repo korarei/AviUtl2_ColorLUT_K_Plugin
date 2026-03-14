@@ -1,0 +1,45 @@
+[project]
+name = "ColorLUT_K"
+version = "0.1.0"
+author = "Korarei"
+
+[build]
+[[build.plugins]]
+id = "lut"
+
+[build.plugins.release]
+commands = [
+    "cmake -S ./src -B ${BUILD_DIRECTORY}/Release -G Ninja -DCMAKE_BUILD_TYPE=Release -DVERSION=${PROJECT_VERSION}",
+    "cmake --build ${BUILD_DIRECTORY}/Release",
+]
+artifacts = ["${BUILD_DIRECTORY}/Release/*.aux2"]
+
+[build.plugins.debug]
+commands = [
+    "cmake -S ./src -B ${BUILD_DIRECTORY}/Debug -G Ninja -DCMAKE_BUILD_TYPE=Debug",
+    "cmake --build ${BUILD_DIRECTORY}/Debug",
+]
+artifacts = ["${BUILD_DIRECTORY}/Debug/*.aux2"]
+
+[release]
+[release.package]
+information = "${PROJECT_NAME} v${PROJECT_VERSION} by ${PROJECT_AUTHOR}"
+license = "MIT"
+website = "https://github.com/korarei/AviUtl2_ColorLUT_K_Plugin"
+report-issue = "https://github.com/korarei/AviUtl2_ColorLUT_K_Plugin/issues"
+summary = "AviUtl ExEdit2でLUTファイルを扱えるようにするプラグイン"
+description = """
+以下の機能が追加される
+- ColorLUT_K (色調整): LUTファイルを読み込み，映像の色を調整するフィルタ
+- HaldCLUT_K (LUT): Hald CLUTのメディアオブジェクト
+- LUTファイル出力: 画像をLUTファイルに変換，出力する拡張機能
+- LUTフィルタをレイヤーに追加: LUTファイルをD&Dでレイヤーに追加する拡張機能
+"""
+
+[[release.contents.extensions]]
+directory = "Plugin/${PROJECT_NAME}"
+files = ["plugin:lut"]
+
+[[release.contents.documents]]
+directory = "Plugin/${PROJECT_NAME}"
+files = ["./*.md", "./LICENSE"]

@@ -6,8 +6,10 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 
-#include "lut.hpp"
-#include "utility.hpp"
+#include <plugin2.h>
+
+#include "core/lut.hpp"
+#include "core/utility.hpp"
 
 namespace {
 using Microsoft::WRL::ComPtr;
@@ -25,19 +27,33 @@ auto reload = FILTER_ITEM_BUTTON(L"Reload LUT", [](EDIT_SECTION *edit) {
 });
 auto compositing_group = FILTER_ITEM_GROUP(L"Compositing", false);
 FILTER_ITEM_SELECT::ITEM modes[] = {
-        {L"Normal", 0},         {L"Darken", 2},
-        {L"Multiply", 3},       {L"Color Burn", 4},
-        {L"Linear Burn", 5},    {L"Darker Color", 6},
-        {L"Lighten", 7},        {L"Screen", 8},
-        {L"Color Dodge", 9},    {L"Linear Dodge (Add)", 10},
-        {L"Lighter Color", 11}, {L"Overlay", 12},
-        {L"Soft Light", 13},    {L"Hard Light", 14},
-        {L"Linear Light", 15},  {L"Vivid Light", 16},
-        {L"Pin Light", 17},     {L"Hard Mix", 18},
-        {L"Difference", 19},    {L"Exclusion", 20},
-        {L"Subtract", 21},      {L"Divide", 22},
-        {L"Hue", 23},           {L"Saturation", 24},
-        {L"Color", 25},         {L"Luminosity", 26},
+        {L"Normal", 0},
+        {L"Dissolve", 1},
+        {L"Darken", 2},
+        {L"Multiply", 3},
+        {L"Color Burn", 4},
+        {L"Linear Burn", 5},
+        {L"Darker Color", 6},
+        {L"Lighten", 7},
+        {L"Screen", 8},
+        {L"Color Dodge", 9},
+        {L"Linear Dodge (Add)", 10},
+        {L"Lighter Color", 11},
+        {L"Overlay", 12},
+        {L"Soft Light", 13},
+        {L"Hard Light", 14},
+        {L"Linear Light", 15},
+        {L"Vivid Light", 16},
+        {L"Pin Light", 17},
+        {L"Hard Mix", 18},
+        {L"Difference", 19},
+        {L"Exclusion", 20},
+        {L"Subtract", 21},
+        {L"Divide", 22},
+        {L"Hue", 23},
+        {L"Saturation", 24},
+        {L"Color", 25},
+        {L"Luminosity", 26},
         {nullptr, -1},
 };
 auto mode = FILTER_ITEM_SELECT(L"Blend Mode", 0, modes);
@@ -63,14 +79,12 @@ func_proc_video(FILTER_PROC_VIDEO *video) {
         lut.wrap_texture(&input, src, D2D1_BITMAP_OPTIONS_NONE);
         lut.wrap_texture(&target, dst.Get(), D2D1_BITMAP_OPTIONS_TARGET);
 
-        ComPtr<ID2D1Effect> fx;
-        if (!lut.build_effect(&fx, input.Get(), path, static_cast<int>(mode.value),
-                              static_cast<float>(opacity.value) * 0.01f, clamp.value)) {
+        if (!lut.configure(path, static_cast<int>(mode.value), opacity.value * 0.01, clamp.value)) {
             logger->error(logger, L"Failed to load LUT");
             return false;
         }
 
-        lut.draw(target.Get(), fx.Get());
+        lut.draw(target.Get(), input.Get());
         lut.copy(src, dst.Get());
     } catch (const std::exception &e) {
         const auto err = string::to_wstr(reinterpret_cast<const char8_t *>(e.what()));
@@ -82,7 +96,7 @@ func_proc_video(FILTER_PROC_VIDEO *video) {
 }
 }  // namespace
 
-FILTER_PLUGIN_TABLE color_lut::info = {
+constinit FILTER_PLUGIN_TABLE color_lut::info = {
         .flag = FILTER_PLUGIN_TABLE::FLAG_VIDEO | FILTER_PLUGIN_TABLE::FLAG_FILTER,
         .name = L"ColorLUT_K",
         .label = L"色調整",

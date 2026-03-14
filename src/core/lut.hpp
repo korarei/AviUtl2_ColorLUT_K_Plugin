@@ -34,15 +34,17 @@ struct HaldCLUT {
     [[nodiscard]] bool save(const std::filesystem::path &path, const std::u8string &title) const;
 };
 
+// setupが呼ばれない場合にそれ以外の描画系メソッドを使用するとやばいので今後どうにかしたい
 class ColorLUT {
 public:
+    [[nodiscard]] static bool load(ID2D1Effect **lut, ID2D1DeviceContext2 *ctx, const std::filesystem::path &path);
+
     void setup(ID3D11Texture2D *tex);
 
     void create_texture(ID3D11Texture2D **tex) const;
     void wrap_texture(ID2D1Bitmap1 **bmp, ID3D11Texture2D *tex, D2D1_BITMAP_OPTIONS options) const;
-    [[nodiscard]] bool build_effect(ID2D1Effect **fx, ID2D1Bitmap1 *input, const std::filesystem::path &path, int mode,
-                                    float opacity, bool clamp);
-    void draw(ID2D1Image *target, ID2D1Effect *fx) const;
+    [[nodiscard]] bool configure(const std::filesystem::path &path, int mode, double opacity, bool clamp);
+    void draw(ID2D1Image *target, ID2D1Image *input) const;
     void copy(ID3D11Resource *dst, ID3D11Resource *src) const noexcept;
 
     void reload() noexcept;
@@ -54,20 +56,19 @@ private:
 
     struct {
         ComPtr<ID3D11Device> device;
-        ComPtr<ID3D11DeviceContext> ctx;
+        ComPtr<ID3D11DeviceContext> context;
     } d3d;
 
     struct {
         ComPtr<ID2D1Factory3> factory;
         ComPtr<ID2D1Device2> device;
-        ComPtr<ID2D1DeviceContext2> ctx;
+        ComPtr<ID2D1DeviceContext2> context;
     } d2d;
 
+    ComPtr<ID2D1Effect> lut;
     ComPtr<ID2D1Effect> blend;
     D3D11_TEXTURE2D_DESC desc{};
     std::unordered_map<std::filesystem::path, ComPtr<ID2D1Effect>> cache{};
-
-    [[nodiscard]] bool load(const std::filesystem::path &path, ID2D1Effect **lut);
 };
 
 class Identity {
@@ -78,9 +79,31 @@ private:
     template <class T>
     using ComPtr = Microsoft::WRL::ComPtr<T>;
 
+    struct alignas(16) Params {
+        uint32_t level;
+        uint32_t _padding[3];
+    };
+
+    struct {
+        D3D11_TEXTURE2D_DESC texture = {};
+        const D3D11_BUFFER_DESC buffer = {
+                .ByteWidth = sizeof(Params),
+                .Usage = D3D11_USAGE_DEFAULT,
+                .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+                .CPUAccessFlags = 0u,
+                .MiscFlags = 0u,
+                .StructureByteStride = 0u,
+        };
+        const D3D11_UNORDERED_ACCESS_VIEW_DESC uav = {
+                .Format = DXGI_FORMAT_R16G16B16A16_FLOAT,
+                .ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D,
+                .Texture2D = {.MipSlice = 0u},
+        };
+    } desc;
+
     ComPtr<ID3D11Device> device;
-    ComPtr<ID3D11DeviceContext> ctx;
-    D3D11_TEXTURE2D_DESC desc{};
+    ComPtr<ID3D11DeviceContext> context;
+    ComPtr<ID3D11ComputeShader> identity;
 
     void setup(ID3D11Texture2D *tex);
 };
