@@ -1,6 +1,9 @@
 #pragma once
 
-#include "common.hpp"
+#include <windows.h>
+
+#include <logger2.h>
+#include <plugin2.h>
 
 namespace importer {
 constexpr wchar_t name[] = L"LUTフィルタをレイヤーに追加";

@@ -2,6 +2,8 @@
 
 #include <d3d11.h>
 
+#include <plugin2.h>
+
 #include "core/lut.hpp"
 #include "core/utility.hpp"
 

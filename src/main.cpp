@@ -1,10 +1,12 @@
-#include "common.hpp"
+#include <windows.h>
+
+#include <logger2.h>
+#include <plugin2.h>
 
 #include "exporter.hpp"
 #include "filter.hpp"
 #include "identity.hpp"
 #include "importer.hpp"
-// #include "importer.hpp"
 
 #ifndef VERSION
 #define VERSION L"0.1.0"
@@ -27,7 +29,7 @@ InitializeLogger(LOG_HANDLE *log) {
 }
 
 DWORD
-RequiredVersion() { return 2003600; }
+RequiredVersion() { return 2003700; }
 
 bool
 InitializePlugin(DWORD ver) {

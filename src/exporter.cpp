@@ -6,6 +6,8 @@
 #include <filesystem>
 #include <ranges>
 
+#include <mmsystem.h>
+
 #include "core/lut.hpp"
 #include "core/pixel.hpp"
 

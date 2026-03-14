@@ -41,10 +41,11 @@ importer::add_filter(EDIT_SECTION *edit, const wchar_t *file) {
             "Clamp=0\n",
             string::to_str(path.u8string()));
 
-    // get_mouse_layer_frameはダメそう (あさってのところに置かれる)
-
-    int layer = edit->info->layer;
-    int frame = edit->info->frame;
+    int layer, frame;
+    if (!edit->get_mouse_layer_frame(&layer, &frame)) {
+        layer = edit->info->layer;
+        frame = edit->info->frame;
+    }
 
     if (auto object = edit->create_object_from_alias(alias.c_str(), layer, frame, 0)) {
         edit->set_focus_object(object);
