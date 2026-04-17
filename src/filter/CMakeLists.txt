@@ -11,7 +11,6 @@ add_library(Filter STATIC
 
 # Include directories.
 target_include_directories(Filter PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}"
     "${AVIUTL2_SDK}"
     "${INTERN}"
 )

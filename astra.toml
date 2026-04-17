@@ -14,16 +14,16 @@ variables = { SOURCE = "./src" }
 [build.plugins.release]
 commands = [
     "cmake -S \"${SOURCE}\" -B \"${BUILD_DIRECTORY}/Release\" -G Ninja -DCMAKE_BUILD_TYPE=Release -DVERSION=${PROJECT_VERSION}",
-    "cmake --build \"${BUILD_DIRECTORY}/Release\"",
     "cmake -E copy \"${BUILD_DIRECTORY}/Release/compile_commands.json\" \"${SOURCE}\"",
+    "cmake --build \"${BUILD_DIRECTORY}/Release\"",
 ]
 artifacts = ["${BUILD_DIRECTORY}/Release/*.aux2"]
 
 [build.plugins.debug]
 commands = [
     "cmake -S \"${SOURCE}\" -B \"${BUILD_DIRECTORY}/Debug\" -G Ninja -DCMAKE_BUILD_TYPE=Debug",
-    "cmake --build \"${BUILD_DIRECTORY}/Debug\"",
     "cmake -E copy \"${BUILD_DIRECTORY}/Debug/compile_commands.json\" \"${SOURCE}\"",
+    "cmake --build \"${BUILD_DIRECTORY}/Debug\"",
 ]
 artifacts = ["${BUILD_DIRECTORY}/Debug/*.aux2"]
 

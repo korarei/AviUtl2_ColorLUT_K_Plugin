@@ -5,9 +5,9 @@
 #include <logger2.h>
 #include <output2.h>
 
-namespace exporter {
+namespace lut::io::exporter {
 extern OUTPUT_PLUGIN_TABLE info;
 
 void
-initialize_logger(LOG_HANDLE *log);
-}  // namespace exporter
+init(LOG_HANDLE *logger);
+}  // namespace lut::io::exporter

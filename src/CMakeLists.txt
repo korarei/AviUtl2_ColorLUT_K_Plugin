@@ -19,8 +19,8 @@ if (NOT CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64|amd64|AMD64)")
 endif()
 
 # Path settings.
-set(AVIUTL2_SDK "${CMAKE_CURRENT_SOURCE_DIR}/external/aviutl2_sdk/include/aviutl2_sdk")
-set(INTERN"${CMAKE_CURRENT_SOURCE_DIR}/intern")
+set(AVIUTL2_SDK "${CMAKE_CURRENT_SOURCE_DIR}/extern/aviutl2_sdk/include/aviutl2_sdk")
+set(INTERN "${CMAKE_CURRENT_SOURCE_DIR}/intern")
 
 # Compiler Dependent Options.
 if (MSVC)

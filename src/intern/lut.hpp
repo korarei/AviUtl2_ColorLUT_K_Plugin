@@ -11,16 +11,17 @@
 
 #include "pixel.hpp"
 
+namespace lut {
 struct CubeLUT {
     int dimension = 0;
 
-    RGBF32 domain_min{};
-    RGBF32 domain_max{};
-    RGBF32 scale{};
+    pixel::RGBF32 domain_min{};
+    pixel::RGBF32 domain_max{};
+    pixel::RGBF32 scale{};
 
     uint32_t size = 0u;
     uint32_t capacity = 0u;
-    std::vector<RGBF32> data{};
+    std::vector<pixel::RGBF32> data{};
 
     [[nodiscard]] bool load(const std::filesystem::path &path) noexcept;
 };
@@ -28,11 +29,12 @@ struct CubeLUT {
 struct HaldCLUT {
     uint32_t level = 0u;
     uint32_t w = 0u, h = 0u;
-    std::vector<RGBAF32> data{};
+    std::vector<pixel::RGBAF32> data{};
 
     [[nodiscard]] bool load(const std::filesystem::path &path);
     [[nodiscard]] bool save(const std::filesystem::path &path, const std::u8string &title) const;
 };
+}  // namespace lut
 
 // setupが呼ばれない場合にそれ以外の描画系メソッドを使用するとやばいので今後どうにかしたい
 class ColorLUT {
