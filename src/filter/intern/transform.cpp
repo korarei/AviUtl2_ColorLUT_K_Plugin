@@ -1,7 +1,5 @@
 #include "transform.hpp"
 
-#include <vector>
-
 #include <d3d11.h>
 #include <wrl/client.h>
 

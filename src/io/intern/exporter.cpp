@@ -1,6 +1,5 @@
 #include "exporter.hpp"
 
-#include <immintrin.h>
 #include <algorithm>
 #include <cwctype>
 #include <execution>
