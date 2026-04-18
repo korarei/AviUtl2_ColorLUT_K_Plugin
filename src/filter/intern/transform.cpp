@@ -108,10 +108,9 @@ apply(FILTER_PROC_VIDEO *video) {
         LUTCache::Info info;
         if (cache.load(info, video->object->effect_id, file.value, ctrl)) {
             params.size = static_cast<float>(info.size);
-            std::vector<ID3D11ShaderResourceView *> srvs{srv.Get(), info.srv.Get()};
 
             const auto pixel_shader = ctrl.as_ps(info.dimension == 1 ? 0uz : 1uz, 0uz, w, h);
-            pixel_shader(dst, srvs, params);
+            pixel_shader(dst, {srv.Get(), info.srv.Get()}, params);
             return true;
         }
 
