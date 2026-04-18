@@ -15,5 +15,10 @@ target_include_directories(IO PUBLIC
     ${INCLUDES}
 )
 
+# Library Link.
+target_link_libraries(IO PRIVATE
+    LUT
+)
+
 # C++ version specification.
 target_compile_features(IO PUBLIC cxx_std_23)

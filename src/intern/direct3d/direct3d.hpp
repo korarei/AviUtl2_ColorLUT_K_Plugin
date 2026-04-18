@@ -10,7 +10,7 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 
-#include "../pixel/pixel.hpp"
+#include "pixel.hpp"
 
 #include <fullscreen.h>
 

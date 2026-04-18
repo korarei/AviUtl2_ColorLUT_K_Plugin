@@ -88,10 +88,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 # Library Link.
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    Pixel
     WIC
-    LUT
-    Direct3D
     Filter
     IO
 )

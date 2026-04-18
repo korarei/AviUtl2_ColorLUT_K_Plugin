@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "../pixel/pixel.hpp"
+#include "pixel.hpp"
 
 namespace lut {
 struct CubeLUT {

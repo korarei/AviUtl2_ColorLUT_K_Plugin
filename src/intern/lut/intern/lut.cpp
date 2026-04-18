@@ -10,7 +10,7 @@
 #include <wrl/client.h>
 
 #include "../../utilities.hpp"
-#include "../../wic/wic.hpp"
+#include "wic.hpp"
 
 #define HR(expr)                             \
     do {                                     \

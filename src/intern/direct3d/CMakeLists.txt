@@ -24,6 +24,7 @@ target_link_libraries(Direct3D PUBLIC
     d3d11
     dxgi
     dxguid
+    Pixel
 )
 
 # C++ version specification.
