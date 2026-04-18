@@ -5,25 +5,26 @@
 #include <format>
 #include <string>
 
-#include "core/utility.hpp"
+#include <utilities.hpp>
 
 namespace {
 constinit LOG_HANDLE *logger = nullptr;
-}  // namespace
+}
 
+namespace lut::io::importer {
 void
-importer::initialize_logger(LOG_HANDLE *log) {
-    logger = log;
+init(LOG_HANDLE *handle) noexcept {
+    logger = handle;
 }
 
 void
-importer::add_filter(EDIT_SECTION *edit, const wchar_t *file) {
+on_drop(EDIT_SECTION *edit, const wchar_t *file) {
     std::filesystem::path path(file);
 
     auto ext = path.extension().wstring();
     std::ranges::for_each(ext, [](wchar_t &c) { c = std::towlower(c); });
     if (ext != L".cube" && ext != L".bmp" && ext != L".png" && ext != L".tif" && ext != L".tiff") {
-        logger->error(logger, L"invalid file extension");
+        logger->error(logger, L"Invalid file extension");
         return;
     }
 
@@ -39,20 +40,19 @@ importer::add_filter(EDIT_SECTION *edit, const wchar_t *file) {
             "Blend Mode=Normal\n"
             "Opacity=100.00\n"
             "Clamp=0\n",
-            string::to_str(path.u8string()));
+            string::as_string(path.u8string()));
 
     int layer, frame;
-    if (!edit->get_mouse_layer_frame(&layer, &frame)) {
-        layer = edit->info->layer;
-        frame = edit->info->frame;
-    }
+    if (!edit->get_mouse_layer_frame(&layer, &frame))
+        layer = edit->info->layer, frame = edit->info->frame;
 
     if (auto object = edit->create_object_from_alias(alias.c_str(), layer, frame, 0)) {
         edit->set_focus_object(object);
 
-        std::wstring msg = std::format(L"create filter object [ColorLUT_K] layer={}, frame={}", layer, frame);
+        std::wstring msg = std::format(L"Create filter object [ColorLUT_K] layer={}, frame={}", layer, frame);
         logger->info(logger, msg.c_str());
     } else {
-        logger->error(logger, L"create filter object failed [ColorLUT_K]");
+        logger->error(logger, L"Failed to create filter object [ColorLUT_K]");
     }
 }
+}  // namespace lut::io::importer

@@ -10,9 +10,15 @@
 #pragma warning(pop)
 #include <logger2.h>
 
-namespace identity {
+namespace lut::filter::transform {
 extern FILTER_PLUGIN_TABLE info;
 
 void
-initialize_logger(LOG_HANDLE *log);
-}  // namespace identity
+reset();
+
+void
+init(LOG_HANDLE *logger) noexcept;
+
+void
+deinit();
+}  // namespace lut::filter::transform

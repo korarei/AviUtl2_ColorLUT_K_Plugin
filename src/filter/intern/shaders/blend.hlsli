@@ -1,21 +1,4 @@
-// D2DのBlendEffectとは違いHDR前提の合成
-Texture2D tex[2] : register(t0);
-SamplerState smp[2] : register(s0);
-
-cbuffer params : register(b0) {
-    int mode;
-    float opacity;
-    bool clamp_output;
-};
-
 static const float eps = 1.0e-4;
-
-struct PS_Input {
-    float4 dummy : SV_Position; // D2Dの仕様で使用不可
-    float4 pos : SCENE_POSITION;
-    float4 uv[2] : TEXCOORD0;
-};
-
 
 /*
 The following function is a modified version of pcg4d function
@@ -25,7 +8,7 @@ https://github.com/markjarzynski/PCG3D/blob/master/LICENSE
 
 uint4
 pcg4d(uint4 v) {
-    v = v * 1664525u + 1013904223u;  
+    v = v * 1664525u + 1013904223u;
 
     v.x += v.y * v.w;
     v.y += v.z * v.x;
@@ -44,8 +27,7 @@ pcg4d(uint4 v) {
 
 inline float
 hash(float4 i) {
-    const uint4 v = pcg4d(uint4(i));
-    return dot(v, 1u) / 4294967295.0;
+    return dot(pcg4d(uint4(i)), 1u) / 4294967295.0;
 }
 
 float3
@@ -208,24 +190,25 @@ luminosity(float3 base, float3 src) {
 }
 
 float4
-main(PS_Input input) : SV_Target {
-    float4 src = saturate(tex[0].Sample(smp[0], input.uv[0].xy));
-    float4 base  = saturate(tex[1].Sample(smp[1], input.uv[1].xy));
+blend(float4 src, float4 base, int blend_mode, float opacity, float should_clamp, float4 seed) {
+    src = saturate(src);
+    base = saturate(base);
 
-    if (mode == 0) {
+    if (blend_mode == 0) {
+        src.rgb *= src.a;
+        base.rgb *= base.a;
         src *= opacity;
         return mad(1.0 - src.a, base, src);
-    } else if (mode == 1) {
-        const float4 output = saturate(float4(src.rgb * rcp(max(src.a, eps)), 1.0));
-        return lerp(base, output, step(hash(input.pos) + eps, src.a * opacity));
+    } else if (blend_mode == 1) {
+        base.rgb *= base.a;
+        return lerp(base, float4(src.rgb, 1.0), step(hash(seed) + eps, src.a * opacity));
     }
 
-    src  = float4(src.rgb  * rcp(max(src.a, eps)), src.a * opacity);
-    base = float4(base.rgb * rcp(max(base.a, eps)), base.a);
+    src.a *= opacity;
 
     float3 blended;
     [forcecase]
-    switch (mode) {
+    switch (blend_mode) {
         case 2:
             blended = darken(base.rgb, src.rgb);
             break;
@@ -310,9 +293,9 @@ main(PS_Input input) : SV_Target {
     src.rgb *= src.a;
     base.rgb *= base.a;
 
-    const float3 rgb = mad(1.0 - src.a, base.rgb, mad(1.0 - base.a, src.rgb, blended));
-    const float a = mad(1.0 - base.a, src.a, base.a);
+    const float3 rgb = max(mad(1.0 - src.a, base.rgb, mad(1.0 - base.a, src.rgb, blended)), 0.0);
+    const float a = saturate(mad(1.0 - base.a, src.a, base.a));
     const float4 output = float4(rgb, a);
 
-    return lerp(output, saturate(output), clamp_output);
+    return lerp(output, saturate(output), should_clamp);
 }

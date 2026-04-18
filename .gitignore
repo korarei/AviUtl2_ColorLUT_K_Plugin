@@ -1,4 +1,6 @@
-.vscode/
+**/.vscode/
 **/.cache/
 **/build/
 **/release/
+**/.venv/
+**/compile_commands.json

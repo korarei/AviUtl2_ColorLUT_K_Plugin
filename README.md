@@ -11,7 +11,7 @@ AviUtl ExEdit2でLUTファイルを扱えるようにするプラグイン．
 
 ## 動作確認
 
-- [AviUtl ExEdit2 beta37](https://spring-fragrance.mints.ne.jp/aviutl/)
+- [AviUtl ExEdit2 beta42](https://spring-fragrance.mints.ne.jp/aviutl/)
 
 > [!CAUTION]
 > beta37以降必須．
@@ -38,6 +38,8 @@ AviUtl ExEdit2でLUTファイルを扱えるようにするプラグイン．
 
 ### ColorLUT_K
 
+初期ラベル: `色調整`
+
 以下の形式のLUTファイルを読み込み，画像の色を変えるフィルタ．
 
 - Cube LUT Specification Version 1.0に準拠したLUTファイル (.cube)
@@ -47,92 +49,69 @@ AviUtl ExEdit2でLUTファイルを扱えるようにするプラグイン．
 
 本体の`キャッシュを破棄`を行った場合，すべてのLUTファイルに対してキャッシュ破棄を行う．
 
-### パラメータ
+#### パラメータ
 
-#### LUT File
-
-LUTファイルを指定する．
-
-#### Reload LUT
-
-`LUT File`で指定したLUTを再読み込みする．
-
-#### Blend Mode
-
-合成時のブレンドモード．
-
-以下の27種類をサポート．
-
-- Normal: 通常
-- Dissolve: ディザ合成
-- Darken: 比較 (暗)
-- Multiply: 乗算
-- Color Burn: 焼き込み (カラー)
-- Linear Burn: 焼き込み (リニア)
-- Darker Color: カラー比較 (暗)
-- Lighten: 比較 (明)
-- Screen: スクリーン
-- Color Dodge: 覆い焼き (カラー)
-- Linear Dodge (Add): 覆い焼き (リニア) - 加算
-- Lighter Color: カラー比較 (明)
-- Overlay: オーバーレイ
-- Soft Light: ソフトライト
-- Hard Light: ハードライト
-- Linear Light: リニアライト
-- Vivid Light: ビビッドライト
-- Pin Light: ピンライト
-- Hard Mix: ハードミックス
-- Difference: 差分
-- Exclusion: 除外
-- Subtract: 減算
-- Divide: 除算
-- Hue: 色相
-- Saturation: 彩度
-- Color: カラー
-- Luminosity: 輝度
+- LUT File: LUTファイルを指定する
+- Reload LUT: `LUT File`で指定したLUTを再読み込みする
+- Blend Mode: 合成時のブレンドモード
+  - Normal: 通常
+  - Dissolve: ディザ合成
+  - Darken: 比較 (暗)
+  - Multiply: 乗算
+  - Color Burn: 焼き込み (カラー)
+  - Linear Burn: 焼き込み (リニア)
+  - Darker Color: カラー比較 (暗)
+  - Lighten: 比較 (明)
+  - Screen: スクリーン
+  - Color Dodge: 覆い焼き (カラー)
+  - Linear Dodge (Add): 覆い焼き (リニア) - 加算
+  - Lighter Color: カラー比較 (明)
+  - Overlay: オーバーレイ
+  - Soft Light: ソフトライト
+  - Hard Light: ハードライト
+  - Linear Light: リニアライト
+  - Vivid Light: ビビッドライト
+  - Pin Light: ピンライト
+  - Hard Mix: ハードミックス
+  - Difference: 差分
+  - Exclusion: 除外
+  - Subtract: 減算
+  - Divide: 除算
+  - Hue: 色相
+  - Saturation: 彩度
+  - Color: カラー
+  - Luminosity: 輝度
+- Opacity: エフェクトの適用度合
+- Clamp: 合成結果を`[0, 1]`にクランプする
 
 > [!NOTE]
 > - `Clamp`にチェックがない場合，合成結果が`[0, 1]`の範囲を超えてしまうことがある．
 > - Hue, Saturation, Color, LuminosityはPhotoshopで採用されているHSLをベースにしている．
 > - AviUtlの合成モードで陰影は焼き込み (リニア)，明暗はリニアライト，色差はカラーに対応する．
 
-#### Opacity
-
-エフェクトの適用度合．
-
-#### Clamp
-
-合成結果を`[0, 1]`にクランプする．
-
 ### HaldCLUT_K
 
 Hald CLUTを生成するメディアオブジェクト．
 
-#### Level
+#### パラメータ
 
-Identity Hald CLUTのレベルを指定する．
-
-Levelの2乗がCube LUTの`LUT_3D_SIZE`となり，Levelの3乗がHald CLUTの辺の長さとなる．
-
-#### Resize Scene to LUT
-
-Hald CLUTの画像サイズに合わせてシーンサイズを変更する．
+- Level: Identity Hald CLUTのレベルを指定する (Levelの2乗がCube LUTの`LUT_3D_SIZE`となり，Levelの3乗がHald CLUTの辺の長さとなる)
+- Resize Scene to LUT: Hald CLUTの画像サイズに合わせてシーンサイズを変更する (いずれ削除する可能性がある)
 
 > [!NOTE]
-> beta37ではUndoに対応していない．
+> beta42ではシーンサイズの変更はUndoに対応していない．
 
 ### LUTファイル出力
 
-Cube LUTファイルをエクスポートする出力プラグイン．
+Cube LUT (`.cube`) またはHald CLUT (16bit RGB PNG `.png`) を出力する出力プラグイン．
 
-シーン全体をHald CLUTとして読み込み変換を行う．したがって，シーンサイズがHald CLUTのサイズと一致しない場合は失敗する．
+シーン全体をHald CLUTとして読み込み変換を行う．シーンサイズがHald CLUTのサイズと一致しない場合は周りの透明部分をカットする．
 
 以下の手順でオリジナルLUTファイルを作成できる．
 
 1. 画像の色調補正を行う．(複数レイヤーを使用してよい)
 2. 見た目を整えた後，画像を`HaldCLUT_K`に差し替える．
-3. `Resize Scene to LUT`をクリックし，シーンサイズをHald CLUTのサイズに合わせる．
-4. `ファイル/ファイル出力/LUTファイル出力`でCube LUTファイルとしてエクスポートする．
+3. `ファイル/ファイル出力/LUTファイル出力`でCube LUTまたはHald CLUTとしてエクスポートする．
 
 出力したCube LUTファイルのサンプルを[samples/](./samples/)に置いている．
 

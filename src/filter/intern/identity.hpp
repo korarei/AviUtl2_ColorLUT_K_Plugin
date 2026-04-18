@@ -10,12 +10,12 @@
 #pragma warning(pop)
 #include <logger2.h>
 
-namespace color_lut {
+namespace lut::filter::identity {
 extern FILTER_PLUGIN_TABLE info;
 
 void
-clear_cache();
+init(LOG_HANDLE *logger) noexcept;
 
 void
-initialize_logger(LOG_HANDLE *log);
-}  // namespace color_lut
+deinit();
+}  // namespace lut::filter::identity
