@@ -10,9 +10,12 @@
 #pragma warning(pop)
 #include <logger2.h>
 
-namespace identity {
+namespace lut::filter::identity {
 extern FILTER_PLUGIN_TABLE info;
 
 void
-initialize_logger(LOG_HANDLE *log);
-}  // namespace identity
+init(LOG_HANDLE *logger) noexcept;
+
+void
+deinit();
+}  // namespace lut::filter::identity

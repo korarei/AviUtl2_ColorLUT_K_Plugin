@@ -13,7 +13,7 @@ constinit LOG_HANDLE *logger = nullptr;
 
 namespace lut::io::importer {
 void
-init(LOG_HANDLE *handle) {
+init(LOG_HANDLE *handle) noexcept {
     logger = handle;
 }
 

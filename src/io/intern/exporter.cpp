@@ -2,8 +2,10 @@
 
 #include <immintrin.h>
 #include <algorithm>
+#include <cstddef>
 #include <execution>
 #include <filesystem>
+#include <format>
 #include <future>
 
 #include <mmsystem.h>
@@ -21,11 +23,11 @@ bool
 export_lut(OUTPUT_INFO *info) {
     constexpr DWORD format = MAKEFOURCC('H', 'F', '6', '4');
 
-    size_t w = info->w, h = info->h;
+    int w = info->w, h = info->h;
 
-    size_t level = static_cast<size_t>(std::round(std::cbrt(static_cast<double>(w))));
-    if (w < 8uz || h < 8uz) {
-        logger->error(logger, L"Invalid HaldCLUT size.");
+    int level = static_cast<int>(std::round(std::cbrt(static_cast<double>(w))));
+    if (w < 8 || h < 8) {
+        logger->error(logger, L"Too small HaldCLUT size.");
         return false;
     }
 
@@ -39,116 +41,104 @@ export_lut(OUTPUT_INFO *info) {
 
     // サイズがおかしい時はリサイズを試みる (AutoClippingの閾値が1.0なやつ)
     if (w != h || w != level * level * level) {
+        const size_t pitch = w;
+
         std::vector<RGBAF32> tmp(w * h);
         to_rgbaf32(tmp.data(), data, w, h);
 
-        size_t edges[4] = {0uz, w - 1uz, 0uz, h - 1uz};
+        int top = 0, bottom = h - 1, left = 0, right = w - 1;
 
-        auto is_invalid = [&](size_t x, size_t y) {
+        auto is_valid = [&](int x, int y) {
             const float a = tmp[x + y * w].a;
-            return a < 0.9999f || a > 1.0001f;
+            return a >= 0.999f && a <= 1.001f;
         };
 
         auto future = std::async(std::launch::async, [&]() {
-            for (size_t y = 0uz; y < h; ++y) {
-                bool flag = true;
-                for (size_t x = 0uz; x < w; ++x) {
-                    if (is_invalid(x, y)) {
-                        flag = false;
+            bool flag = false;
+            for (int y = 0; y < h && !flag; ++y) {
+                for (int x = 0; x < w; ++x) {
+                    if (is_valid(x, y)) {
+                        top = y;
+                        flag = true;
                         break;
                     }
-                }
-
-                if (flag) {
-                    edges[0] = y;
-                    break;
                 }
             }
         });
 
-        for (size_t y = h - 1uz; y < h; --y) {
-            bool flag = true;
-            for (size_t x = w - 1uz; x < w; --x) {
-                if (is_invalid(x, y)) {
-                    flag = false;
-                    break;
+        {
+            bool flag = false;
+            for (int y = h - 1; y >= 0 && !flag; --y) {
+                for (int x = w - 1; x >= 0; --x) {
+                    if (is_valid(x, y)) {
+                        bottom = y;
+                        flag = true;
+                        break;
+                    }
                 }
-            }
-
-            if (flag) {
-                edges[1] = y;
-                break;
             }
         }
 
         future.get();
 
         future = std::async(std::launch::async, [&]() {
-            for (size_t x = 0uz; x < w; ++x) {
-                bool flag = true;
-                for (size_t y = edges[0]; y <= edges[1]; ++y) {
-                    if (is_invalid(x, y)) {
-                        flag = false;
+            bool flag = false;
+            for (int x = 0; x < w && !flag; ++x) {
+                for (int y = top; y <= bottom; ++y) {
+                    if (is_valid(x, y)) {
+                        left = x;
+                        flag = true;
                         break;
                     }
-                }
-
-                if (flag) {
-                    edges[2] = x;
-                    break;
                 }
             }
         });
 
-        for (size_t x = w - 1uz; x < w; --x) {
-            bool flag = true;
-            for (size_t y = edges[0]; y <= edges[1]; ++y) {
-                if (is_invalid(x, y)) {
-                    flag = false;
-                    break;
+        {
+            bool flag = false;
+            for (int x = w - 1; x >= 0 && !flag; --x) {
+                for (int y = bottom; y >= top; --y) {
+                    if (is_valid(x, y)) {
+                        right = x;
+                        flag = true;
+                        break;
+                    }
                 }
-            }
-
-            if (flag) {
-                edges[3] = x;
-                break;
             }
         }
 
         future.get();
 
-        w = edges[3] - edges[2] + 1uz, h = edges[1] - edges[0] + 1uz;
-        level = static_cast<size_t>(std::round(std::cbrt(static_cast<double>(w))));
+        w = right - left + 1, h = bottom - top + 1;
+        level = static_cast<int>(std::round(std::cbrt(static_cast<double>(w))));
 
         if (w != h || w != level * level * level) {
-            logger->error(logger, L"Invalid HaldCLUT size.");
+            logger->error(logger, std::format(L"Invalid HaldCLUT size: {}x{}", w, h).c_str());
             return false;
         }
 
-        const size_t x = edges[0], y = edges[2];
-
         hald.level = static_cast<uint32_t>(level);
-        hald.w = static_cast<uint32_t>(w), hald.h = static_cast<uint32_t>(h);
         hald.data.resize(w * h);
         const auto st = hald.data.data();
 
         std::for_each(std::execution::par_unseq, hald.data.begin(), hald.data.end(), [&](auto &elem) {
-            const size_t i = elem - st;
-            elem = tmp[(i % w) + x + ((i / w) + y) * w];
+            const size_t i = &elem - st;
+            const auto x = (i % w) + left;
+            const auto y = (i / w) + top;
+            elem = tmp[x + y * pitch];
         });
     } else {
         hald.level = static_cast<uint32_t>(level);
-        hald.w = static_cast<uint32_t>(w), hald.h = static_cast<uint32_t>(h);
         hald.data.resize(w * h);
         to_rgbaf32(hald.data.data(), data, w, h);
     }
 
     const auto path = std::filesystem::path(info->savefile);
     const auto title = path.stem().u8string();
-    return hald.save(path, title);
+    return hald.export_cube(path, title);
 }
 
-const wchar_t *
+constexpr const wchar_t *
 describe_metadata() {
     return L"TITLE: {STEM} / DOMAIN_MAX: 1.0 / DOMAIN_MIN: 0.0";
 }
@@ -166,7 +156,7 @@ constinit OUTPUT_PLUGIN_TABLE info = {
 };
 
 void
-init(LOG_HANDLE *handle) {
+init(LOG_HANDLE *handle) noexcept {
     logger = handle;
 }
 }  // namespace lut::io::exporter

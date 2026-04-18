@@ -10,12 +10,15 @@
 #pragma warning(pop)
 #include <logger2.h>
 
-namespace color_lut {
+namespace lut::filter::transform {
 extern FILTER_PLUGIN_TABLE info;
 
 void
-clear_cache();
+reset();
 
 void
-initialize_logger(LOG_HANDLE *log);
-}  // namespace color_lut
+init(LOG_HANDLE *logger) noexcept;
+
+void
+deinit();
+}  // namespace lut::filter::transform

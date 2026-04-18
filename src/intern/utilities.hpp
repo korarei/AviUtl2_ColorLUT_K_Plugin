@@ -10,7 +10,7 @@
 #endif
 
 namespace lut::string {
-inline std::wstring
+constexpr inline std::wstring
 to_wstring(const std::u8string_view &string) {
 #ifdef _WIN32
     if (string.empty())
@@ -28,7 +28,7 @@ to_wstring(const std::u8string_view &string) {
 #endif
 }
 
-inline std::u8string
+constexpr inline std::u8string
 to_utf8(const std::wstring_view &string) {
 #ifdef _WIN32
     if (string.empty())
@@ -45,12 +45,12 @@ to_utf8(const std::wstring_view &string) {
 #endif
 }
 
-inline constexpr std::string
+constexpr inline std::string
 as_string(const std::u8string_view &string) {
     return std::string(reinterpret_cast<const char *>(string.data()), string.size());
 }
 
-inline constexpr std::u8string
+constexpr inline std::u8string
 as_utf8(const std::string_view &string) {
     return std::u8string(reinterpret_cast<const char8_t *>(string.data()), string.size());
 }

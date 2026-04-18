@@ -12,8 +12,7 @@ add_library(IO STATIC
 # Include directories.
 target_include_directories(IO PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
-    "${AVIUTL2_SDK}"
-    "${INTERN}"
+    ${INCLUDES}
 )
 
 # C++ version specification.

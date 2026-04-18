@@ -9,5 +9,5 @@ namespace lut::io::exporter {
 extern OUTPUT_PLUGIN_TABLE info;
 
 void
-init(LOG_HANDLE *logger);
+init(LOG_HANDLE *logger) noexcept;
 }  // namespace lut::io::exporter

@@ -19,8 +19,16 @@ if (NOT CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64|amd64|AMD64)")
 endif()
 
 # Path settings.
+set(CMAKE_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(AVIUTL2_SDK "${CMAKE_CURRENT_SOURCE_DIR}/extern/aviutl2_sdk/include/aviutl2_sdk")
-set(INTERN "${CMAKE_CURRENT_SOURCE_DIR}/intern")
+set(INCLUDES
+    "${AVIUTL2_SDK}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/intern"
+    "${CMAKE_CURRENT_SOURCE_DIR}/intern/pixel"
+    "${CMAKE_CURRENT_SOURCE_DIR}/intern/wic"
+    "${CMAKE_CURRENT_SOURCE_DIR}/intern/lut"
+    "${CMAKE_CURRENT_SOURCE_DIR}/intern/direct3d"
+)
 
 # Compiler Dependent Options.
 if (MSVC)
@@ -60,6 +68,10 @@ add_compile_definitions(
 )
 
 # Subdirectories.
+add_subdirectory(intern/pixel)
+add_subdirectory(intern/wic)
+add_subdirectory(intern/lut)
+add_subdirectory(intern/direct3d)
 add_subdirectory(filter)
 add_subdirectory(io)
 
@@ -76,6 +88,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 # Library Link.
 target_link_libraries(${PROJECT_NAME} PRIVATE
+    Pixel
+    WIC
+    LUT
+    Direct3D
     Filter
     IO
 )

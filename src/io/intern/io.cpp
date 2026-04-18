@@ -5,7 +5,7 @@
 
 namespace lut::io {
 void
-init(HOST_APP_TABLE *host, LOG_HANDLE *logger) {
+init(HOST_APP_TABLE *host, LOG_HANDLE *logger) noexcept {
     exporter::init(logger);
     importer::init(logger);
 

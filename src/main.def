@@ -1,6 +1,7 @@
 EXPORTS
-    InitializeLogger
     RequiredVersion
+    InitializeLogger
     InitializePlugin
+    UninitializePlugin
     GetCommonPluginTable
     RegisterPlugin
