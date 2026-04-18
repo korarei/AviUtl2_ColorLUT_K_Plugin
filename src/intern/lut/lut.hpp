@@ -22,5 +22,6 @@ struct HaldCLUT {
 
     [[nodiscard]] bool load(const std::filesystem::path &path);
     [[nodiscard]] bool export_cube(const std::filesystem::path &path, const std::u8string &title) const;
+    [[nodiscard]] bool export_png(const std::filesystem::path &path, const std::u8string &title) const;
 };
 }  // namespace lut

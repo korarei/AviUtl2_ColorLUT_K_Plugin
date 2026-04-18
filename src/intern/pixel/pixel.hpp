@@ -3,6 +3,10 @@
 #include <cstdint>
 
 namespace lut::pixel {
+struct RGB16 {
+    uint16_t r, g, b;
+};
+
 struct RGBA16 {
     uint16_t r, g, b, a;
 };
@@ -16,6 +20,9 @@ struct RGBF32 {
 struct RGBAF32 {
     float r, g, b, a;
 };
+
+void
+to_rgb16(RGB16 *dst, const RGBAF32 *src, size_t w, size_t h);
 
 void
 to_rgbaf32(RGBAF32 *dst, const RGBAF16 *src, size_t w, size_t h);

@@ -2,16 +2,18 @@
 
 #include <immintrin.h>
 #include <algorithm>
-#include <cstddef>
+#include <cwctype>
 #include <execution>
 #include <filesystem>
 #include <format>
 #include <future>
+#include <stdexcept>
 
 #include <mmsystem.h>
 
 #include <lut.hpp>
 #include <pixel.hpp>
+#include <utilities.hpp>
 
 namespace {
 using namespace lut;
@@ -37,105 +39,121 @@ export_lut(OUTPUT_INFO *info) {
         return false;
     }
 
-    HaldCLUT hald{};
+    try {
+        HaldCLUT hald{};
 
-    // サイズがおかしい時はリサイズを試みる (AutoClippingの閾値が1.0なやつ)
-    if (w != h || w != level * level * level) {
-        const size_t pitch = w;
-
-        std::vector<RGBAF32> tmp(w * h);
-        to_rgbaf32(tmp.data(), data, w, h);
-
-        int top = 0, bottom = h - 1, left = 0, right = w - 1;
-
-        auto is_valid = [&](int x, int y) {
-            const float a = tmp[x + y * w].a;
-            return a >= 0.999f && a <= 1.001f;
-        };
-
-        auto future = std::async(std::launch::async, [&]() {
-            bool flag = false;
-            for (int y = 0; y < h && !flag; ++y) {
-                for (int x = 0; x < w; ++x) {
-                    if (is_valid(x, y)) {
-                        top = y;
-                        flag = true;
-                        break;
-                    }
-                }
-            }
-        });
-
-        {
-            bool flag = false;
-            for (int y = h - 1; y >= 0 && !flag; --y) {
-                for (int x = w - 1; x >= 0; --x) {
-                    if (is_valid(x, y)) {
-                        bottom = y;
-                        flag = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        future.get();
-
-        future = std::async(std::launch::async, [&]() {
-            bool flag = false;
-            for (int x = 0; x < w && !flag; ++x) {
-                for (int y = top; y <= bottom; ++y) {
-                    if (is_valid(x, y)) {
-                        left = x;
-                        flag = true;
-                        break;
-                    }
-                }
-            }
-        });
-
-        {
-            bool flag = false;
-            for (int x = w - 1; x >= 0 && !flag; --x) {
-                for (int y = bottom; y >= top; --y) {
-                    if (is_valid(x, y)) {
-                        right = x;
-                        flag = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        future.get();
-
-        w = right - left + 1, h = bottom - top + 1;
-        level = static_cast<int>(std::round(std::cbrt(static_cast<double>(w))));
-
+        // サイズがおかしい時はリサイズを試みる (AutoClippingの閾値が1.0なやつ)
         if (w != h || w != level * level * level) {
-            logger->error(logger, std::format(L"Invalid HaldCLUT size: {}x{}", w, h).c_str());
-            return false;
+            logger->info(logger, L"Resizing Hald CLUT...");
+
+            const size_t pitch = w;
+
+            std::vector<RGBAF32> tmp(w * h);
+            to_rgbaf32(tmp.data(), data, w, h);
+
+            int top = 0, bottom = h - 1, left = 0, right = w - 1;
+
+            auto is_valid = [&](int x, int y) {
+                const float a = tmp[x + y * w].a;
+                return a >= 0.999f && a <= 1.001f;
+            };
+
+            auto future = std::async(std::launch::async, [&]() {
+                bool flag = false;
+                for (int y = 0; y < h && !flag; ++y) {
+                    for (int x = 0; x < w; ++x) {
+                        if (is_valid(x, y)) {
+                            top = y;
+                            flag = true;
+                            break;
+                        }
+                    }
+                }
+            });
+
+            {
+                bool flag = false;
+                for (int y = h - 1; y >= 0 && !flag; --y) {
+                    for (int x = w - 1; x >= 0; --x) {
+                        if (is_valid(x, y)) {
+                            bottom = y;
+                            flag = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            future.get();
+
+            future = std::async(std::launch::async, [&]() {
+                bool flag = false;
+                for (int x = 0; x < w && !flag; ++x) {
+                    for (int y = top; y <= bottom; ++y) {
+                        if (is_valid(x, y)) {
+                            left = x;
+                            flag = true;
+                            break;
+                        }
+                    }
+                }
+            });
+
+            {
+                bool flag = false;
+                for (int x = w - 1; x >= 0 && !flag; --x) {
+                    for (int y = bottom; y >= top; --y) {
+                        if (is_valid(x, y)) {
+                            right = x;
+                            flag = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            future.get();
+
+            w = right - left + 1, h = bottom - top + 1;
+            level = static_cast<int>(std::round(std::cbrt(static_cast<double>(w))));
+
+            if (w != h || w != level * level * level) {
+                logger->error(logger, std::format(L"Invalid HaldCLUT size: {}x{}", w, h).c_str());
+                return false;
+            }
+
+            hald.level = static_cast<uint32_t>(level);
+            hald.data.resize(w * h);
+            const auto st = hald.data.data();
+
+            std::for_each(std::execution::par_unseq, hald.data.begin(), hald.data.end(), [&](auto &elem) {
+                const size_t i = &elem - st;
+                const auto x = (i % w) + left;
+                const auto y = (i / w) + top;
+                elem = tmp[x + y * pitch];
+            });
+        } else {
+            hald.level = static_cast<uint32_t>(level);
+            hald.data.resize(w * h);
+            to_rgbaf32(hald.data.data(), data, w, h);
         }
 
-        hald.level = static_cast<uint32_t>(level);
-        hald.data.resize(w * h);
-        const auto st = hald.data.data();
+        const auto path = std::filesystem::path(info->savefile);
+        const auto title = path.stem().u8string();
 
-        std::for_each(std::execution::par_unseq, hald.data.begin(), hald.data.end(), [&](auto &elem) {
-            const size_t i = &elem - st;
-            const auto x = (i % w) + left;
-            const auto y = (i / w) + top;
-            elem = tmp[x + y * pitch];
-        });
-    } else {
-        hald.level = static_cast<uint32_t>(level);
-        hald.data.resize(w * h);
-        to_rgbaf32(hald.data.data(), data, w, h);
+        auto ext = path.extension().wstring();
+        std::ranges::for_each(ext, [](wchar_t &c) { c = std::towlower(c); });
+        if (ext == L".cube")
+            return hald.export_cube(path, title);
+        else if (ext == L".png")
+            return hald.export_png(path, title);
+        else
+            throw std::runtime_error("Invalid file extension.");
+    } catch (const std::exception &e) {
+        const auto err = string::to_wstring(string::as_utf8(e.what()));
+        logger->error(logger, err.c_str());
+        return false;
     }
-
-    const auto path = std::filesystem::path(info->savefile);
-    const auto title = path.stem().u8string();
-    return hald.export_cube(path, title);
 }
 
 constexpr const wchar_t *
@@ -148,7 +166,7 @@ namespace lut::io::exporter {
 constinit OUTPUT_PLUGIN_TABLE info = {
         .flag = OUTPUT_PLUGIN_TABLE::FLAG_IMAGE,
         .name = L"LUTファイル出力",
-        .filefilter = L"Cube LUT File (*.cube)\0*.cube\0\0",
+        .filefilter = L"Cube LUT File (*.cube)\0*.cube\0Hald CLUT File (*.png)\0*.png\0\0",
         .information = L"Export Cube LUT from Hald CLUT.",
         .func_output = export_lut,
         .func_config = nullptr,

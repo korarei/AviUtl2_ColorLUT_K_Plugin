@@ -240,4 +240,67 @@ HaldCLUT::export_cube(const std::filesystem::path &path, const std::u8string &ti
 
     return true;
 }
+
+bool
+HaldCLUT::export_png(const std::filesystem::path &path, const std::u8string &title) const {
+    WICPixelFormatGUID format = GUID_WICPixelFormat48bppRGB;
+
+    uint32_t size = level * level * level;
+    size_t capacity = size * size;
+    if (level < 2u || data.size() != capacity)
+        return false;
+
+    if (auto parent = path.parent_path(); !parent.empty()) {
+        std::error_code ec;
+        std::filesystem::create_directories(parent, ec);
+        if (ec)
+            return false;
+    }
+
+    auto factory = wic::WIC::get_factory();
+
+    ComPtr<IWICBitmapEncoder> encoder;
+    HR(factory->CreateEncoder(GUID_ContainerFormatPng, nullptr, &encoder));
+
+    ComPtr<IWICStream> stream;
+    HR(factory->CreateStream(&stream));
+    HR(stream->InitializeFromFilename(path.wstring().c_str(), GENERIC_WRITE));
+
+    HR(encoder->Initialize(stream.Get(), WICBitmapEncoderNoCache));
+
+    ComPtr<IWICBitmapFrameEncode> frame;
+    HR(encoder->CreateNewFrame(&frame, nullptr));
+    HR(frame->Initialize(nullptr));
+
+    HR(frame->SetSize(size, size));
+    HR(frame->SetPixelFormat(&format));
+
+    ComPtr<IWICMetadataQueryWriter> writer;
+    HR(frame->GetMetadataQueryWriter(&writer));
+    PROPVARIANT value;
+    PropVariantInit(&value);
+    value.vt = VT_LPWSTR;
+
+    value.pwszVal = _wcsdup(L"Created by ColorLUT_K.aux2");
+    writer->SetMetadataByName(L"/tEXt/{str=Software}", &value);
+    free(value.pwszVal);
+
+    auto name = string::to_wstring(title);
+    value.pwszVal = _wcsdup(name.c_str());
+    writer->SetMetadataByName(L"/tEXt/{str=Title}", &value);
+    free(value.pwszVal);
+
+    value.pwszVal = nullptr;
+    PropVariantClear(&value);
+
+    uint32_t stride = size * 6u;
+    std::vector<pixel::RGB16> tmp(capacity);
+    pixel::to_rgb16(tmp.data(), data.data(), size, size);
+
+    HR(frame->WritePixels(size, stride, stride * size, reinterpret_cast<BYTE *>(tmp.data())));
+    HR(frame->Commit());
+    HR(encoder->Commit());
+
+    return true;
+}
 }  // namespace lut

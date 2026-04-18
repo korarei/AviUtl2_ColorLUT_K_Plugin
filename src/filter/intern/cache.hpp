@@ -8,7 +8,6 @@
 
 #include <wrl/client.h>
 
-#include "direct3d.hpp"
 #include "lut.hpp"
 
 struct ID3D11Texture1D;
@@ -95,9 +94,6 @@ private:
 
 class LUTCache : public Cache<LUTData> {
 public:
-    template <size_t N, size_t M>
-    using Direct3D = direct3d::Direct3D<N, M>;
-
     struct Info {
         template <typename T>
         using ComPtr = Microsoft::WRL::ComPtr<T>;
