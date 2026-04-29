@@ -3,14 +3,15 @@ cmake_minimum_required(VERSION 3.20.0)
 project(Pixel LANGUAGES CXX)
 
 # Library definition.
-add_library(Pixel STATIC
+add_library(${PROJECT_NAME} STATIC
     intern/pixel.cpp
 )
 
 # Include directories.
-target_include_directories(Pixel PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}"
+target_include_directories(${PROJECT_NAME}
+    PUBLIC
+        "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
 # C++ version specification.
-target_compile_features(Pixel PUBLIC cxx_std_23)
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
