@@ -22,6 +22,7 @@ to_wstring(const std::u8string_view &string) {
     const int wsize = MultiByteToWideChar(CP_UTF8, 0, str, size, NULL, 0);
     std::wstring wstr(wsize, 0);
     MultiByteToWideChar(CP_UTF8, 0, str, size, wstr.data(), wsize);
+
     return wstr;
 #else
     return std::filesystem::path(string).wstring();
@@ -36,9 +37,19 @@ to_utf8(const std::wstring_view &string) {
 
     const int wsize = static_cast<int>(string.size());
 
-    const int size = WideCharToMultiByte(CP_UTF8, 0, string.data(), wsize, NULL, 0, NULL, NULL);
+    const int size =
+            WideCharToMultiByte(CP_UTF8, 0, string.data(), wsize, NULL, 0, NULL, NULL);
     std::u8string utf8(size, 0);
-    WideCharToMultiByte(CP_UTF8, 0, string.data(), wsize, reinterpret_cast<char *>(utf8.data()), size, NULL, NULL);
+    WideCharToMultiByte(
+            CP_UTF8,
+            0,
+            string.data(),
+            wsize,
+            reinterpret_cast<char *>(utf8.data()),
+            size,
+            NULL,
+            NULL);
+
     return utf8;
 #else
     return std::filesystem::path(string).u8string();
@@ -52,6 +63,7 @@ as_string(const std::u8string_view &string) {
 
 constexpr inline std::u8string
 as_utf8(const std::string_view &string) {
-    return std::u8string(reinterpret_cast<const char8_t *>(string.data()), string.size());
+    return std::u8string(
+            reinterpret_cast<const char8_t *>(string.data()), string.size());
 }
 }  // namespace lut::string

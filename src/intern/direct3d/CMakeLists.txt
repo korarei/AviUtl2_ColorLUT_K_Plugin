@@ -9,10 +9,14 @@ add_library(${PROJECT_NAME} STATIC
 
 # Shader compilation.
 include(${CMAKE_SCRIPTS}/CompileShaders.cmake)
-set(SHADERS
+set(VERTEX_SHADERS
     "${CMAKE_CURRENT_SOURCE_DIR}/intern/shaders/fullscreen.hlsl"
 )
-compile_vertex_shaders(${PROJECT_NAME} "${SHADERS}")
+set(COMPUTE_SHADERS
+    "${CMAKE_CURRENT_SOURCE_DIR}/intern/shaders/blit.hlsl"
+)
+compile_vertex_shaders(${PROJECT_NAME} "${VERTEX_SHADERS}")
+compile_compute_shaders(${PROJECT_NAME} "${COMPUTE_SHADERS}")
 
 # Include directories.
 target_include_directories(${PROJECT_NAME}

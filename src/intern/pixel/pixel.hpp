@@ -22,11 +22,11 @@ struct RGBAF32 {
 };
 
 void
-to_rgb16(RGB16 *dst, const RGBAF32 *src, size_t w, size_t h);
+to_rgb16(RGB16 *dst, const RGBF32 *src, size_t w, size_t h);
 
 void
 to_rgbaf32(RGBAF32 *dst, const RGBAF16 *src, size_t w, size_t h);
 
 void
-to_rgbaf32(RGBAF32 *dst, const RGBA16 *src, size_t w, size_t h);
+to_rgbf32(RGBF32 *dst, const RGB16 *src, size_t w, size_t h);
 }  // namespace lut::pixel

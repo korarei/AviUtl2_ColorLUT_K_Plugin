@@ -11,7 +11,7 @@ AviUtl ExEdit2でLUTファイルを扱えるようにするプラグイン．
 
 ## 動作確認
 
-- [AviUtl ExEdit2 beta42](https://spring-fragrance.mints.ne.jp/aviutl/)
+- [AviUtl ExEdit2 beta43b](https://spring-fragrance.mints.ne.jp/aviutl/)
 
 > [!CAUTION]
 > beta37以降必須．
@@ -99,7 +99,7 @@ Hald CLUTを生成するメディアオブジェクト．
 - Resize Scene to LUT: Hald CLUTの画像サイズに合わせてシーンサイズを変更する (いずれ削除する可能性がある)
 
 > [!NOTE]
-> beta42ではシーンサイズの変更はUndoに対応していない．
+> beta43bではシーンサイズの変更はUndoに対応していない．
 
 ### LUTファイル出力
 

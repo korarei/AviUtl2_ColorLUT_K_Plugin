@@ -10,6 +10,7 @@ init(HOST_APP_TABLE *host, LOG_HANDLE *logger) noexcept {
     importer::init(logger);
 
     host->register_output_plugin(&exporter::info);
-    host->register_file_drop_handler(importer::name, importer::filefilter, importer::on_drop);
+    host->register_file_drop_handler(
+            importer::name, importer::filefilter, importer::on_drop);
 }
 }  // namespace lut::io

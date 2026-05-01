@@ -4,7 +4,6 @@ Texture2D tex : register(t0);
 Texture1DArray<float> lut : register(t1);
 SamplerState smp : register(s0);
 cbuffer params : register(b0) {
-    float size;
     int blend_mode;
     float opacity;
     float should_clamp;
@@ -13,10 +12,13 @@ cbuffer params : register(b0) {
 
 float4
 main(float4 pos : SV_Position) : SV_Target {
+    float2 size;
+    lut.GetDimensions(size.x, size.y);
+
     float4 base = tex.Load(int3(pos.xy, 0));
     base.rgb *= rcp(max(base.a, 1.0e-4));
 
-    const float3 uvw = mad(base.rgb, size - 1.0, 0.5) * rcp(size);
+    const float3 uvw = mad(base.rgb, size.x - 1.0, 0.5) * rcp(size.x);
     const float r = lut.Sample(smp, float2(uvw.r, 0.0));
     const float g = lut.Sample(smp, float2(uvw.g, 1.0));
     const float b = lut.Sample(smp, float2(uvw.b, 2.0));
