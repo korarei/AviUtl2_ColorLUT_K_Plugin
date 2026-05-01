@@ -7,9 +7,8 @@
 
 #include <identity.h>
 
-namespace {
-using namespace lut;
-using namespace direct3d;
+namespace lut::filter::identity::intern {
+using Direct3D = direct3d::Direct3D<0uz, 1uz, 1uz, 1uz>;
 
 constinit LOG_HANDLE *logger = nullptr;
 
@@ -18,7 +17,7 @@ struct alignas(16) Params {
     uint32_t _padding[3];
 };
 
-Direct3D<1, 1> d3d({sizeof(Params)}, {g_identity});
+Direct3D d3d({sizeof(Params)}, {g_identity});
 
 auto level = FILTER_ITEM_TRACK(L"Level", 8.0, 2.0, 24.0, 1.0);
 auto fit_scene = FILTER_ITEM_BUTTON(L"Resize Scene to LUT", [](EDIT_SECTION *edit) {
@@ -33,42 +32,41 @@ draw(FILTER_PROC_VIDEO *video) {
     const Params params{static_cast<uint32_t>(level.value), {0u, 0u, 0u}};
 
     try {
-        const uint32_t size = params.level * params.level * params.level;
+        const int size = static_cast<int>(params.level * params.level * params.level);
         video->set_image_data(nullptr, size, size);
 
-        auto dst = video->get_image_texture2d();
-        const auto ctrl = d3d.init(dst, nullptr);
+        auto tex = video->get_image_texture2d();
+        const auto ctrl = d3d.init(tex, nullptr);
 
-        const auto pixel_shader = ctrl.as_ps(0uz, 0uz, size, size);
-        pixel_shader(dst, {}, params);
+        const auto dst = ctrl.fetch_cache<0uz>(tex);
+        ctrl.pixel_shader<0uz, 0uz, 0uz>()(&dst.rtv, size, size, params);
+        return true;
     } catch (const std::exception &e) {
         const auto err = string::to_wstring(string::as_utf8(e.what()));
         logger->error(logger, err.c_str());
         return false;
     }
-
-    return true;
 }
-}  // namespace
+}  // namespace lut::filter::identity::intern
 
 namespace lut::filter::identity {
 constinit FILTER_PLUGIN_TABLE info = {
         .flag = FILTER_PLUGIN_TABLE::FLAG_VIDEO | FILTER_PLUGIN_TABLE::FLAG_INPUT,
         .name = L"HaldCLUT_K",
         .label = L"LUT",
-        .information = L"HaldCLUT_K generates Hald CLUTs.",
-        .items = items,
-        .func_proc_video = draw,
+        .information = L"HaldCLUT_K generates Identity Hald CLUTs",
+        .items = intern::items,
+        .func_proc_video = intern::draw,
         .func_proc_audio = nullptr,
 };
 
 void
 init(LOG_HANDLE *handle) noexcept {
-    logger = handle;
+    intern::logger = handle;
 }
 
 void
 deinit() {
-    d3d.release();
+    intern::d3d.release();
 }
 }  // namespace lut::filter::identity

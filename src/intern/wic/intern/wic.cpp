@@ -19,7 +19,13 @@ WIC::release() {
     instance().factory.Reset();
 }
 
-WIC::WIC() { CoCreateInstance(CLSID_WICImagingFactory2, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&factory)); }
+WIC::WIC() {
+    CoCreateInstance(
+            CLSID_WICImagingFactory2,
+            nullptr,
+            CLSCTX_INPROC_SERVER,
+            IID_PPV_ARGS(&factory));
+}
 
 WIC &
 WIC::instance() {

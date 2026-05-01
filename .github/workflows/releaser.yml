@@ -47,7 +47,7 @@ jobs:
     - name: Build plugin (Release)
       id: build
       run: |
-        pip install git+https://github.com/korarei/AviUtl2_Astra.git@v0.5.2
+        pip install git+https://github.com/korarei/AviUtl2_Astra.git@v0.6.2
 
         astra release -v '${{ steps.extract.outputs.version }}'
 

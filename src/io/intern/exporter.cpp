@@ -28,27 +28,27 @@ export_lut(OUTPUT_INFO *info) {
 
     int level = static_cast<int>(std::round(std::cbrt(static_cast<double>(w))));
     if (w < 8 || h < 8) {
-        logger->error(logger, L"Too small HaldCLUT size.");
+        logger->error(logger, L"Too small HaldCLUT size");
         return false;
     }
 
     const auto *data = static_cast<const RGBAF16 *>(info->func_get_video(0, format));
     if (data == nullptr) {
-        logger->error(logger, L"Failed to get image data.");
+        logger->error(logger, L"Failed to get image data");
         return false;
     }
 
     try {
         HaldCLUT hald{};
 
+        std::vector<RGBAF32> tmp(w * h);
+        to_rgbaf32(tmp.data(), data, w, h);
+
         // サイズがおかしい時はリサイズを試みる (AutoClippingの閾値が1.0なやつ)
         if (w != h || w != level * level * level) {
-            logger->info(logger, L"Resizing Hald CLUT...");
+            logger->info(logger, L"Resizing image data");
 
             const size_t pitch = w;
-
-            std::vector<RGBAF32> tmp(w * h);
-            to_rgbaf32(tmp.data(), data, w, h);
 
             int top = 0, bottom = h - 1, left = 0, right = w - 1;
 
@@ -117,7 +117,9 @@ export_lut(OUTPUT_INFO *info) {
             level = static_cast<int>(std::round(std::cbrt(static_cast<double>(w))));
 
             if (w != h || w != level * level * level) {
-                logger->error(logger, std::format(L"Invalid HaldCLUT size: {}x{}", w, h).c_str());
+                logger->error(
+                        logger,
+                        std::format(L"Invalid HaldCLUT size: {}x{}", w, h).c_str());
                 return false;
             }
 
@@ -125,16 +127,32 @@ export_lut(OUTPUT_INFO *info) {
             hald.data.resize(w * h);
             const auto st = hald.data.data();
 
-            std::for_each(std::execution::par_unseq, hald.data.begin(), hald.data.end(), [&](auto &elem) {
-                const size_t i = &elem - st;
-                const auto x = (i % w) + left;
-                const auto y = (i / w) + top;
-                elem = tmp[x + y * pitch];
-            });
+            std::for_each(
+                    std::execution::par_unseq,
+                    hald.data.begin(),
+                    hald.data.end(),
+                    [&](auto &elem) {
+                        const size_t i = &elem - st;
+                        const auto x = (i % w) + left;
+                        const auto y = (i / w) + top;
+                        const auto &rgba = tmp[x + y * pitch];
+                        const auto a = std::max(rgba.a, 1.0e-4f);
+                        elem = {rgba.r / a, rgba.g / a, rgba.b / a};
+                    });
         } else {
             hald.level = static_cast<uint32_t>(level);
             hald.data.resize(w * h);
-            to_rgbaf32(hald.data.data(), data, w, h);
+            const auto st = hald.data.data();
+
+            std::for_each(
+                    std::execution::par_unseq,
+                    hald.data.begin(),
+                    hald.data.end(),
+                    [&](auto &elem) {
+                        const auto &rgba = tmp[&elem - st];
+                        const auto a = std::max(rgba.a, 1.0e-4f);
+                        elem = {rgba.r / a, rgba.g / a, rgba.b / a};
+                    });
         }
 
         const auto path = std::filesystem::path(info->savefile);
@@ -147,7 +165,7 @@ export_lut(OUTPUT_INFO *info) {
         else if (ext == L".png")
             return hald.export_png(path, title);
         else
-            throw std::runtime_error("Invalid file extension.");
+            throw std::runtime_error("Invalid file extension");
     } catch (const std::exception &e) {
         const auto err = string::to_wstring(string::as_utf8(e.what()));
         logger->error(logger, err.c_str());
@@ -165,8 +183,9 @@ namespace lut::io::exporter {
 constinit OUTPUT_PLUGIN_TABLE info = {
         .flag = OUTPUT_PLUGIN_TABLE::FLAG_IMAGE,
         .name = L"LUTファイル出力",
-        .filefilter = L"Cube LUT File (*.cube)\0*.cube\0Hald CLUT File (*.png)\0*.png\0\0",
-        .information = L"Export Cube LUT from Hald CLUT.",
+        .filefilter =
+                L"Cube LUT File (*.cube)\0*.cube\0Hald CLUT File (*.png)\0*.png\0\0",
+        .information = L"Export Cube LUT or Hald CLUT",
         .func_output = export_lut,
         .func_config = nullptr,
         .func_get_config_text = describe_metadata,

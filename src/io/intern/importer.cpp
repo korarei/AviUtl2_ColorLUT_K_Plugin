@@ -23,7 +23,8 @@ on_drop(EDIT_SECTION *edit, const wchar_t *file) {
 
     auto ext = path.extension().wstring();
     std::ranges::for_each(ext, [](wchar_t &c) { c = std::towlower(c); });
-    if (ext != L".cube" && ext != L".bmp" && ext != L".png" && ext != L".tif" && ext != L".tiff") {
+    if (ext != L".cube" && ext != L".bmp" && ext != L".png" && ext != L".tif"
+        && ext != L".tiff") {
         logger->error(logger, L"Invalid file extension");
         return;
     }
@@ -49,7 +50,8 @@ on_drop(EDIT_SECTION *edit, const wchar_t *file) {
     if (auto object = edit->create_object_from_alias(alias.c_str(), layer, frame, 0)) {
         edit->set_focus_object(object);
 
-        std::wstring msg = std::format(L"Create filter object [ColorLUT_K] layer={}, frame={}", layer, frame);
+        std::wstring msg = std::format(
+                L"Create filter object [ColorLUT_K] layer={}, frame={}", layer, frame);
         logger->info(logger, msg.c_str());
     } else {
         logger->error(logger, L"Failed to create filter object [ColorLUT_K]");

@@ -12,7 +12,8 @@ init(HOST_APP_TABLE *host, LOG_HANDLE *logger) noexcept {
     host->register_filter_plugin(&identity::info);
     host->register_filter_plugin(&transform::info);
 
-    host->register_clear_cache_handler([]([[maybe_unused]] EDIT_SECTION *edit) { transform::reset(); });
+    host->register_clear_cache_handler(
+            []([[maybe_unused]] EDIT_SECTION *edit) { transform::reset(); });
 }
 
 void

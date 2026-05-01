@@ -20,14 +20,16 @@ endif()
 
 # Path settings.
 set(CMAKE_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-set(AVIUTL2_SDK "${CMAKE_CURRENT_SOURCE_DIR}/extern/aviutl2_sdk/include/aviutl2_sdk")
-set(INCLUDES
-    "${AVIUTL2_SDK}"
+
+# Interface Library
+add_library(AviUtl2SDK INTERFACE)
+target_include_directories(AviUtl2SDK INTERFACE
+    "${CMAKE_CURRENT_SOURCE_DIR}/extern/aviutl2_sdk/include/aviutl2_sdk"
+)
+
+add_library(Utilities INTERFACE)
+target_include_directories(Utilities INTERFACE
     "${CMAKE_CURRENT_SOURCE_DIR}/intern"
-    "${CMAKE_CURRENT_SOURCE_DIR}/intern/pixel"
-    "${CMAKE_CURRENT_SOURCE_DIR}/intern/wic"
-    "${CMAKE_CURRENT_SOURCE_DIR}/intern/lut"
-    "${CMAKE_CURRENT_SOURCE_DIR}/intern/direct3d"
 )
 
 # Compiler Dependent Options.
@@ -81,16 +83,13 @@ add_library(${PROJECT_NAME} SHARED
     main.cpp
 )
 
-# Include directories.
-target_include_directories(${PROJECT_NAME} PRIVATE
-    "${AVIUTL2_SDK}"
-)
-
 # Library Link.
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    WIC
-    Filter
-    IO
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        WIC
+        Filter
+        IO
+        AviUtl2SDK
 )
 
 # Output settings.

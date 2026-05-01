@@ -1,5 +1,5 @@
 [astra]
-requires-astra = ">=0.5.2"
+requires-astra = ">=0.6.2"
 
 [project]
 name = "ColorLUT_K"
@@ -9,22 +9,24 @@ author = "Korarei"
 [build]
 [[build.plugins]]
 id = "lut"
-variables = { SOURCE = "./src" }
+shell = "pwsh"
 
 [build.plugins.release]
-commands = [
-    "cmake -S \"${SOURCE}\" -B \"${BUILD_DIRECTORY}/Release\" -G Ninja -DCMAKE_BUILD_TYPE=Release -DVERSION=${PROJECT_VERSION}",
-    "cmake -E copy \"${BUILD_DIRECTORY}/Release/compile_commands.json\" \"${SOURCE}\"",
-    "cmake --build \"${BUILD_DIRECTORY}/Release\"",
-]
+commands = '''
+$src = "./src"
+cmake -S "$src" -B "$env:BUILD_DIRECTORY/Release" -G Ninja -DCMAKE_BUILD_TYPE=Release -DVERSION="$env:PROJECT_VERSION"
+cp "$env:BUILD_DIRECTORY/Release/compile_commands.json" "$src"
+cmake --build "$env:BUILD_DIRECTORY/Release"
+'''
 artifacts = ["${BUILD_DIRECTORY}/Release/*.aux2"]
 
 [build.plugins.debug]
-commands = [
-    "cmake -S \"${SOURCE}\" -B \"${BUILD_DIRECTORY}/Debug\" -G Ninja -DCMAKE_BUILD_TYPE=Debug",
-    "cmake -E copy \"${BUILD_DIRECTORY}/Debug/compile_commands.json\" \"${SOURCE}\"",
-    "cmake --build \"${BUILD_DIRECTORY}/Debug\"",
-]
+commands = '''
+$src = "./src"
+cmake -S "$src" -B "$env:BUILD_DIRECTORY/Debug" -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cp "$env:BUILD_DIRECTORY/Debug/compile_commands.json" "$src"
+cmake --build "$env:BUILD_DIRECTORY/Debug"
+'''
 artifacts = ["${BUILD_DIRECTORY}/Debug/*.aux2"]
 
 [release]
@@ -38,7 +40,7 @@ description = """
 以下の機能が追加される
 - 色調整 -> ColorLUT_K: LUTファイルを用いた色調補正
 - LUT -> HaldCLUT_K: Hald CLUT (画像形式のLUT) のメディアオブジェクト
-- ファイル -> ファイル出力 -> LUTファイル出力: 画像をLUTファイルに変換し出力する
+- ファイル -> ファイル出力 -> LUTファイル出力: 画像をLUTファイルとして出力する
 - ファイルドロップ -> LUTフィルタをレイヤーに追加: LUTファイルをD&Dでレイヤーに追加する
 """
 

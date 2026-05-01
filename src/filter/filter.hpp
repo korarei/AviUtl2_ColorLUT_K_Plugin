@@ -4,7 +4,6 @@
 
 #include <logger2.h>
 #include <plugin2.h>
-#include <winnt.h>
 
 namespace lut::filter {
 void
