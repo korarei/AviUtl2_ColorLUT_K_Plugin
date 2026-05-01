@@ -295,7 +295,6 @@ blend(float4 src, float4 base, int blend_mode, float opacity, float should_clamp
 
     const float3 rgb = max(mad(1.0 - src.a, base.rgb, mad(1.0 - base.a, src.rgb, blended)), 0.0);
     const float a = saturate(mad(1.0 - base.a, src.a, base.a));
-    const float4 output = float4(rgb, a);
 
-    return lerp(output, saturate(output), should_clamp);
+    return lerp(float4(rgb, a), float4(clamp(rgb, 0.0, a), a), should_clamp);
 }
