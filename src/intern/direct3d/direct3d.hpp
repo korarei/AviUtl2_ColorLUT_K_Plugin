@@ -18,57 +18,43 @@
 namespace lut::direct3d {
 template <size_t NTemp, size_t NCache, size_t NCB, size_t NPS>
 class Direct3D {
-public:
+  public:
     class Ctrl {
-    public:
+      public:
         template <size_t PS, size_t CB, size_t NSRV>
         class PixelShader {
-        public:
+          public:
             constexpr ~PixelShader() = default;
-            constexpr PixelShader(Direct3D &owner) : owner(owner) {}
+            constexpr PixelShader(Direct3D& owner) : owner(owner) {}
 
-            constexpr PixelShader(const PixelShader &) = delete;
-            constexpr PixelShader &operator=(const PixelShader &) = delete;
-            constexpr PixelShader(PixelShader &&) = delete;
-            constexpr PixelShader &operator=(PixelShader &&) = delete;
+            constexpr PixelShader(const PixelShader&) = delete;
+            constexpr PixelShader& operator=(const PixelShader&) = delete;
+            constexpr PixelShader(PixelShader&&) = delete;
+            constexpr PixelShader& operator=(PixelShader&&) = delete;
 
             template <typename T>
-            constexpr void operator()(
-                    ID3D11RenderTargetView *const *dst,
-                    int w,
-                    int h,
-                    const std::array<ID3D11ShaderResourceView *, NSRV> &srvs,
-                    const T &data) const
+            constexpr void operator()(ID3D11RenderTargetView* const* dst, int w, int h,
+                                      const std::array<ID3D11ShaderResourceView*, NSRV>& srvs, const T& data) const
                 requires(NCB > 0 && NSRV > 0)
             {
-                constexpr ID3D11ShaderResourceView *null_views[NSRV] = {nullptr};
+                constexpr ID3D11ShaderResourceView* null_views[NSRV] = {nullptr};
                 constexpr size_t size = sizeof(T);
 
-                if (size > owner.cb[CB].size)
-                    throw std::runtime_error("Constant buffer size mismatch");
+                if (size > owner.cb[CB].size) throw std::runtime_error("Constant buffer size mismatch");
 
-                const auto &cbuffer = owner.cb[CB].handle;
+                const auto& cbuffer = owner.cb[CB].handle;
 
                 D3D11_MAPPED_SUBRESOURCE mapped{};
-                HRESULT hr = owner.ctx->Map(
-                        cbuffer.Get(), 0u, D3D11_MAP_WRITE_DISCARD, 0u, &mapped);
-                if (FAILED(hr))
-                    throw std::runtime_error("Failed to map constant buffer");
+                HRESULT hr = owner.ctx->Map(cbuffer.Get(), 0u, D3D11_MAP_WRITE_DISCARD, 0u, &mapped);
+                if (FAILED(hr)) throw std::runtime_error("Failed to map constant buffer");
 
                 std::memcpy(mapped.pData, &data, size);
                 owner.ctx->Unmap(cbuffer.Get(), 0u);
 
-                D3D11_VIEWPORT vp{
-                        0.0f,
-                        0.0f,
-                        static_cast<float>(w),
-                        static_cast<float>(h),
-                        0.0f,
-                        1.0f};
+                D3D11_VIEWPORT vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
 
                 owner.ctx->IASetInputLayout(nullptr);
-                owner.ctx->IASetPrimitiveTopology(
-                        D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+                owner.ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
                 owner.ctx->VSSetShader(owner.vs.Get(), nullptr, 0u);
                 owner.ctx->PSSetShader(owner.ps[PS].handle.Get(), nullptr, 0u);
@@ -86,40 +72,26 @@ public:
             }
 
             template <typename T>
-            constexpr void operator()(
-                    ID3D11RenderTargetView *const *dst,
-                    int w,
-                    int h,
-                    const T &data) const
+            constexpr void operator()(ID3D11RenderTargetView* const* dst, int w, int h, const T& data) const
                 requires(NCB > 0 && NSRV == 0)
             {
                 constexpr size_t size = sizeof(T);
 
-                if (size > owner.cb[CB].size)
-                    throw std::runtime_error("Constant buffer size mismatch");
+                if (size > owner.cb[CB].size) throw std::runtime_error("Constant buffer size mismatch");
 
-                const auto &cbuffer = owner.cb[CB].handle;
+                const auto& cbuffer = owner.cb[CB].handle;
 
                 D3D11_MAPPED_SUBRESOURCE mapped{};
-                HRESULT hr = owner.ctx->Map(
-                        cbuffer.Get(), 0u, D3D11_MAP_WRITE_DISCARD, 0u, &mapped);
-                if (FAILED(hr))
-                    throw std::runtime_error("Failed to map constant buffer");
+                HRESULT hr = owner.ctx->Map(cbuffer.Get(), 0u, D3D11_MAP_WRITE_DISCARD, 0u, &mapped);
+                if (FAILED(hr)) throw std::runtime_error("Failed to map constant buffer");
 
                 std::memcpy(mapped.pData, &data, size);
                 owner.ctx->Unmap(cbuffer.Get(), 0u);
 
-                D3D11_VIEWPORT vp{
-                        0.0f,
-                        0.0f,
-                        static_cast<float>(w),
-                        static_cast<float>(h),
-                        0.0f,
-                        1.0f};
+                D3D11_VIEWPORT vp{0.0f, 0.0f, static_cast<float>(w), static_cast<float>(h), 0.0f, 1.0f};
 
                 owner.ctx->IASetInputLayout(nullptr);
-                owner.ctx->IASetPrimitiveTopology(
-                        D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+                owner.ctx->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
                 owner.ctx->VSSetShader(owner.vs.Get(), nullptr, 0u);
                 owner.ctx->PSSetShader(owner.ps[PS].handle.Get(), nullptr, 0u);
@@ -134,44 +106,40 @@ public:
                 owner.ctx->OMSetRenderTargets(1u, &null_rtv, nullptr);
             }
 
-        private:
-            static constexpr ID3D11RenderTargetView *null_rtv = nullptr;
+          private:
+            static constexpr ID3D11RenderTargetView* null_rtv = nullptr;
 
-            Direct3D &owner;
+            Direct3D& owner;
         };
 
         struct Cache {
-            ID3D11ShaderResourceView *srv = nullptr;
-            ID3D11RenderTargetView *rtv = nullptr;
+            ID3D11ShaderResourceView* srv = nullptr;
+            ID3D11RenderTargetView* rtv = nullptr;
         };
 
         struct Temp {
-            ID3D11ShaderResourceView *srv = nullptr;
-            ID3D11UnorderedAccessView *uav = nullptr;
+            ID3D11ShaderResourceView* srv = nullptr;
+            ID3D11UnorderedAccessView* uav = nullptr;
         };
 
         constexpr ~Ctrl() = default;
-        constexpr Ctrl(Direct3D &owner) : owner(owner) {}
+        constexpr Ctrl(Direct3D& owner) : owner(owner) {}
 
-        constexpr Ctrl(const Ctrl &) = delete;
-        constexpr Ctrl &operator=(const Ctrl &) = delete;
-        constexpr Ctrl(Ctrl &&) = delete;
-        constexpr Ctrl &operator=(Ctrl &&) = delete;
+        constexpr Ctrl(const Ctrl&) = delete;
+        constexpr Ctrl& operator=(const Ctrl&) = delete;
+        constexpr Ctrl(Ctrl&&) = delete;
+        constexpr Ctrl& operator=(Ctrl&&) = delete;
 
-        constexpr void create_texture(
-                ID3D11Texture1D **dst,
-                uint32_t w,
-                uint32_t n,
-                const float *data) const {
+        constexpr void create_texture(ID3D11Texture1D** dst, uint32_t w, uint32_t n, const float* data) const {
             D3D11_TEXTURE1D_DESC desc{
-                    .Width = w,
-                    .MipLevels = 1u,
-                    .ArraySize = n,
-                    .Format = DXGI_FORMAT_R32_FLOAT,
-                    .Usage = D3D11_USAGE_DEFAULT,
-                    .BindFlags = D3D11_BIND_SHADER_RESOURCE,
-                    .CPUAccessFlags = 0u,
-                    .MiscFlags = 0u,
+                .Width = w,
+                .MipLevels = 1u,
+                .ArraySize = n,
+                .Format = DXGI_FORMAT_R32_FLOAT,
+                .Usage = D3D11_USAGE_DEFAULT,
+                .BindFlags = D3D11_BIND_SHADER_RESOURCE,
+                .CPUAccessFlags = 0u,
+                .MiscFlags = 0u,
             };
 
             if (data == nullptr) {
@@ -192,24 +160,20 @@ public:
                 throw std::runtime_error("Failed to create texture1d");
         }
 
-        constexpr void create_texture(
-                ID3D11Texture3D **dst,
-                uint32_t w,
-                uint32_t h,
-                uint32_t d,
-                const pixel::RGBF32 *data) const {
+        constexpr void create_texture(ID3D11Texture3D** dst, uint32_t w, uint32_t h, uint32_t d,
+                                      const pixel::RGBF32* data) const {
             constexpr uint32_t size = static_cast<uint32_t>(sizeof(pixel::RGBF32));
 
             D3D11_TEXTURE3D_DESC desc{
-                    .Width = w,
-                    .Height = h,
-                    .Depth = d,
-                    .MipLevels = 1u,
-                    .Format = DXGI_FORMAT_R32G32B32_FLOAT,
-                    .Usage = D3D11_USAGE_DEFAULT,
-                    .BindFlags = D3D11_BIND_SHADER_RESOURCE,
-                    .CPUAccessFlags = 0u,
-                    .MiscFlags = 0u,
+                .Width = w,
+                .Height = h,
+                .Depth = d,
+                .MipLevels = 1u,
+                .Format = DXGI_FORMAT_R32G32B32_FLOAT,
+                .Usage = D3D11_USAGE_DEFAULT,
+                .BindFlags = D3D11_BIND_SHADER_RESOURCE,
+                .CPUAccessFlags = 0u,
+                .MiscFlags = 0u,
             };
 
             if (data == nullptr) {
@@ -220,57 +184,50 @@ public:
             }
 
             D3D11_SUBRESOURCE_DATA init{
-                    .pSysMem = data,
-                    .SysMemPitch = w * size,
-                    .SysMemSlicePitch = w * h * size,
+                .pSysMem = data,
+                .SysMemPitch = w * size,
+                .SysMemSlicePitch = w * h * size,
             };
 
             if (FAILED(owner.device->CreateTexture3D(&desc, &init, dst)))
                 throw std::runtime_error("Failed to create texture3d");
         }
 
-        constexpr void create_shader_resource_view(
-                ID3D11ShaderResourceView **srv, ID3D11Resource *resource) const {
+        constexpr void create_shader_resource_view(ID3D11ShaderResourceView** srv, ID3D11Resource* resource) const {
             if (FAILED(owner.device->CreateShaderResourceView(resource, nullptr, srv)))
                 throw std::runtime_error("Failed to create shader resource view");
         }
 
         template <size_t Cache>
-        [[nodiscard]] constexpr Ctrl::Cache fetch_cache(ID3D11Texture2D *tex) const
+        [[nodiscard]] constexpr Ctrl::Cache fetch_cache(ID3D11Texture2D* tex) const
             requires(NCache > 0)
         {
-            auto &cache = owner.caches[Cache];
+            auto& cache = owner.caches[Cache];
 
             if (cache.tex == nullptr || cache.tex.Get() != tex) {
                 cache.tex = tex;
 
-                HRESULT hr = owner.device->CreateShaderResourceView(
-                        tex, nullptr, cache.srv.ReleaseAndGetAddressOf());
-                if (FAILED(hr))
-                    throw std::runtime_error("Failed to create shader resource view");
+                HRESULT hr = owner.device->CreateShaderResourceView(tex, nullptr, cache.srv.ReleaseAndGetAddressOf());
+                if (FAILED(hr)) throw std::runtime_error("Failed to create shader resource view");
 
-                hr = owner.device->CreateRenderTargetView(
-                        tex, nullptr, cache.rtv.ReleaseAndGetAddressOf());
-                if (FAILED(hr))
-                    throw std::runtime_error("Failed to create render target view");
+                hr = owner.device->CreateRenderTargetView(tex, nullptr, cache.rtv.ReleaseAndGetAddressOf());
+                if (FAILED(hr)) throw std::runtime_error("Failed to create render target view");
             }
 
             return {cache.srv.Get(), cache.rtv.Get()};
         }
 
         template <size_t Temp>
-        [[nodiscard]] constexpr Ctrl::Temp blit(
-                ID3D11ShaderResourceView *const *src, uint32_t w, uint32_t h) const
+        [[nodiscard]] constexpr Ctrl::Temp blit(ID3D11ShaderResourceView* const* src, uint32_t w, uint32_t h) const
             requires(NTemp > 0)
         {
-            constexpr ID3D11UnorderedAccessView *null_uav = nullptr;
-            constexpr ID3D11ShaderResourceView *null_srv = nullptr;
+            constexpr ID3D11UnorderedAccessView* null_uav = nullptr;
+            constexpr ID3D11ShaderResourceView* null_srv = nullptr;
 
-            auto &temp = owner.temps[Temp];
+            auto& temp = owner.temps[Temp];
 
             owner.ctx->CSSetShader(owner.blit.Get(), nullptr, 0u);
-            owner.ctx->CSSetUnorderedAccessViews(
-                    0u, 1u, temp.uav.GetAddressOf(), nullptr);
+            owner.ctx->CSSetUnorderedAccessViews(0u, 1u, temp.uav.GetAddressOf(), nullptr);
             owner.ctx->CSSetShaderResources(0u, 1u, src);
             owner.ctx->Dispatch((w + 31u) / 32u, (h + 31u) / 32u, 1u);
 
@@ -287,51 +244,46 @@ public:
             return PixelShader<PS, CB, NSRV>(owner);
         }
 
-    private:
-        Direct3D &owner;
+      private:
+        Direct3D& owner;
     };
 
     constexpr ~Direct3D() = default;
-    constexpr Direct3D(
-            const std::array<size_t, NCB> &cb,
-            const std::array<std::span<const BYTE>, NPS> &ps) noexcept
+    constexpr Direct3D(const std::array<size_t, NCB>& cb, const std::array<std::span<const BYTE>, NPS>& ps) noexcept
         requires(NCB > 0 && NPS > 0)
     {
         for (size_t i = 0u; i < NCB; ++i) this->cb[i].size = cb[i];
         for (size_t i = 0u; i < NPS; ++i) this->ps[i].data = ps[i];
     }
 
-    constexpr Direct3D(const Direct3D &) = delete;
-    constexpr Direct3D &operator=(const Direct3D &) = delete;
-    constexpr Direct3D(Direct3D &&) = delete;
-    constexpr Direct3D &operator=(Direct3D &&) = delete;
+    constexpr Direct3D(const Direct3D&) = delete;
+    constexpr Direct3D& operator=(const Direct3D&) = delete;
+    constexpr Direct3D(Direct3D&&) = delete;
+    constexpr Direct3D& operator=(Direct3D&&) = delete;
 
-    [[nodiscard]] constexpr Ctrl init(ID3D11Texture2D *tex, void (*reset)()) {
+    [[nodiscard]] constexpr Ctrl init(ID3D11Texture2D* tex, void (*reset)()) {
         ComPtr<ID3D11Device> d;
         tex->GetDevice(&d);
 
-        if (device != nullptr && SUCCEEDED(device->GetDeviceRemovedReason())
-            && device == d)
-            return Ctrl(*this);
+        if (device != nullptr && SUCCEEDED(device->GetDeviceRemovedReason()) && device == d) return Ctrl(*this);
 
         release();
-        if (reset != nullptr)
-            reset();
+        if (reset != nullptr) reset();
 
         device = d;
         device->GetImmediateContext(&ctx);
 
         D3D11_SAMPLER_DESC smp_desc{
-                .Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR,
-                .AddressU = D3D11_TEXTURE_ADDRESS_CLAMP,
-                .AddressV = D3D11_TEXTURE_ADDRESS_CLAMP,
-                .AddressW = D3D11_TEXTURE_ADDRESS_CLAMP,
-                .MipLODBias = 0.0f,
-                .MaxAnisotropy = 0u,
-                .ComparisonFunc = D3D11_COMPARISON_NEVER,
-                .BorderColor = {0.0f, 0.0f, 0.0f, 0.0f},
-                .MinLOD = 0.0f,
-                .MaxLOD = D3D11_FLOAT32_MAX,
+            .Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR,
+            .AddressU = D3D11_TEXTURE_ADDRESS_CLAMP,
+            .AddressV = D3D11_TEXTURE_ADDRESS_CLAMP,
+            .AddressW = D3D11_TEXTURE_ADDRESS_CLAMP,
+            .MipLODBias = 0.0f,
+            .MaxAnisotropy = 0u,
+            .ComparisonFunc = D3D11_COMPARISON_NEVER,
+            .BorderColor = {0.0f, 0.0f, 0.0f, 0.0f},
+            .MinLOD = 0.0f,
+            .MaxLOD = D3D11_FLOAT32_MAX,
         };
 
         HRESULT hr = device->CreateSamplerState(&smp_desc, &smp);
@@ -341,8 +293,7 @@ public:
         }
 
         std::span<const BYTE> vs_data(g_fullscreen);
-        hr = device->CreateVertexShader(
-                vs_data.data(), vs_data.size_bytes(), nullptr, &vs);
+        hr = device->CreateVertexShader(vs_data.data(), vs_data.size_bytes(), nullptr, &vs);
         if (FAILED(hr)) {
             release();
             throw std::runtime_error("Failed to create vertex shader");
@@ -350,15 +301,15 @@ public:
 
         if constexpr (NCB > 0) {
             D3D11_BUFFER_DESC buf_desc{
-                    .ByteWidth = 0u,
-                    .Usage = D3D11_USAGE_DYNAMIC,
-                    .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
-                    .CPUAccessFlags = D3D11_CPU_ACCESS_WRITE,
-                    .MiscFlags = 0u,
-                    .StructureByteStride = 0u,
+                .ByteWidth = 0u,
+                .Usage = D3D11_USAGE_DYNAMIC,
+                .BindFlags = D3D11_BIND_CONSTANT_BUFFER,
+                .CPUAccessFlags = D3D11_CPU_ACCESS_WRITE,
+                .MiscFlags = 0u,
+                .StructureByteStride = 0u,
             };
 
-            for (auto &c : cb) {
+            for (auto& c : cb) {
                 buf_desc.ByteWidth = static_cast<uint32_t>(c.size);
                 hr = device->CreateBuffer(&buf_desc, nullptr, &c.handle);
                 if (FAILED(hr)) {
@@ -369,9 +320,8 @@ public:
         }
 
         if constexpr (NPS > 0) {
-            for (auto &p : ps) {
-                hr = device->CreatePixelShader(
-                        p.data.data(), p.data.size_bytes(), nullptr, &p.handle);
+            for (auto& p : ps) {
+                hr = device->CreatePixelShader(p.data.data(), p.data.size_bytes(), nullptr, &p.handle);
                 if (FAILED(hr)) {
                     release();
                     throw std::runtime_error("Failed to create pixel shader");
@@ -381,28 +331,26 @@ public:
 
         if constexpr (NTemp > 0) {
             std::span<const BYTE> blit_data(g_blit);
-            hr = device->CreateComputeShader(
-                    blit_data.data(), blit_data.size_bytes(), nullptr, &blit);
+            hr = device->CreateComputeShader(blit_data.data(), blit_data.size_bytes(), nullptr, &blit);
             if (FAILED(hr)) {
                 release();
                 throw std::runtime_error("Failed to create compute shader");
             }
 
             constexpr D3D11_TEXTURE2D_DESC tex_desc{
-                    .Width = 16384u,
-                    .Height = 16384u,
-                    .MipLevels = 1u,
-                    .ArraySize = 1u,
-                    .Format = DXGI_FORMAT_R16G16B16A16_FLOAT,
-                    .SampleDesc = {.Count = 1u, .Quality = 0u},
-                    .Usage = D3D11_USAGE_DEFAULT,
-                    .BindFlags =
-                            D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS,
-                    .CPUAccessFlags = 0u,
-                    .MiscFlags = 0u,
+                .Width = 16384u,
+                .Height = 16384u,
+                .MipLevels = 1u,
+                .ArraySize = 1u,
+                .Format = DXGI_FORMAT_R16G16B16A16_FLOAT,
+                .SampleDesc = {.Count = 1u, .Quality = 0u},
+                .Usage = D3D11_USAGE_DEFAULT,
+                .BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS,
+                .CPUAccessFlags = 0u,
+                .MiscFlags = 0u,
             };
 
-            for (auto &t : temps) {
+            for (auto& t : temps) {
                 hr = device->CreateTexture2D(&tex_desc, nullptr, &t.tex);
                 if (FAILED(hr)) {
                     release();
@@ -430,7 +378,7 @@ public:
         if constexpr (NTemp > 0) {
             blit.Reset();
 
-            for (auto &t : temps) {
+            for (auto& t : temps) {
                 t.srv.Reset();
                 t.uav.Reset();
                 t.tex.Reset();
@@ -438,7 +386,7 @@ public:
         }
 
         if constexpr (NCache > 0) {
-            for (auto &c : caches) {
+            for (auto& c : caches) {
                 c.srv.Reset();
                 c.rtv.Reset();
                 c.tex.Reset();
@@ -446,11 +394,11 @@ public:
         }
 
         if constexpr (NPS > 0) {
-            for (auto &p : ps) p.handle.Reset();
+            for (auto& p : ps) p.handle.Reset();
         }
 
         if constexpr (NCB > 0) {
-            for (auto &c : cb) c.handle.Reset();
+            for (auto& c : cb) c.handle.Reset();
         }
 
         vs.Reset();
@@ -459,7 +407,7 @@ public:
         device.Reset();
     }
 
-private:
+  private:
     template <typename T>
     using ComPtr = Microsoft::WRL::ComPtr<T>;
 

@@ -13,12 +13,9 @@
 namespace lut::filter::transform {
 extern FILTER_PLUGIN_TABLE info;
 
-void
-reset();
+void reset();
 
-void
-init(LOG_HANDLE *logger) noexcept;
+void init(LOG_HANDLE* logger) noexcept;
 
-void
-deinit();
+void deinit();
 }  // namespace lut::filter::transform

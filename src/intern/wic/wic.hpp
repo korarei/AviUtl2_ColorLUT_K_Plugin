@@ -6,11 +6,11 @@ struct IWICImagingFactory2;
 
 namespace lut::wic {
 class WIC {
-public:
-    [[nodiscard]] static IWICImagingFactory2 *get_factory();
+  public:
+    [[nodiscard]] static IWICImagingFactory2* get_factory();
     static void release();
 
-private:
+  private:
     template <typename T>
     using ComPtr = Microsoft::WRL::ComPtr<T>;
 
@@ -19,11 +19,11 @@ private:
     ~WIC() = default;
     WIC();
 
-    WIC(const WIC &) = delete;
-    WIC &operator=(const WIC &) = delete;
-    WIC(WIC &&) = delete;
-    WIC &operator=(WIC &&) = delete;
+    WIC(const WIC&) = delete;
+    WIC& operator=(const WIC&) = delete;
+    WIC(WIC&&) = delete;
+    WIC& operator=(WIC&&) = delete;
 
-    [[nodiscard]] static WIC &instance();
+    [[nodiscard]] static WIC& instance();
 };
 };  // namespace lut::wic

@@ -13,9 +13,7 @@
 namespace lut::filter::identity {
 extern FILTER_PLUGIN_TABLE info;
 
-void
-init(LOG_HANDLE *logger) noexcept;
+void init(LOG_HANDLE* logger) noexcept;
 
-void
-deinit();
+void deinit();
 }  // namespace lut::filter::identity
