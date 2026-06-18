@@ -1,198 +1,165 @@
 #include "exporter.hpp"
 
-#include <algorithm>
-#include <cwctype>
-#include <execution>
-#include <filesystem>
-#include <format>
-#include <future>
-#include <stdexcept>
-
 #include <mmsystem.h>
 
-#include <lut.hpp>
-#include <pixel.hpp>
-#include <utilities.hpp>
+#include <algorithm>
+#include <execution>
+#include <filesystem>
+#include <ranges>
+
+#include <Eigen/Dense>
+
+#include <output2.h>
+
+#include <intern/aviutl/aviutl.hpp>
+#include <intern/lut/lut.hpp>
+#include <intern/pixel/pixel.hpp>
+#include <intern/string.hpp>
 
 namespace {
-using namespace lut;
-using namespace pixel;
+namespace string = lut::string;
+namespace hald = lut::hald;
 
-constinit LOG_HANDLE *logger = nullptr;
+using Logger = lut::aviutl::Logger;
+using Box = Eigen::AlignedBox2i;
+using RGBAF16 = lut::pixel::RGBAF16;
 
-bool
-export_lut(OUTPUT_INFO *info) {
+constexpr bool ExportLUT(OUTPUT_INFO* context) {
     constexpr DWORD format = MAKEFOURCC('H', 'F', '6', '4');
 
-    int w = info->w, h = info->h;
+    Eigen::Vector2i size{context->w, context->h};
 
-    int level = static_cast<int>(std::round(std::cbrt(static_cast<double>(w))));
-    if (w < 8 || h < 8) {
-        logger->error(logger, L"Too small HaldCLUT size");
+    if ((size.array() < 8).any()) {
+        Logger::Error(L"Unsupported resolution");
         return false;
     }
 
-    const auto *data = static_cast<const RGBAF16 *>(info->func_get_video(0, format));
-    if (data == nullptr) {
-        logger->error(logger, L"Failed to get image data");
+    const auto* raw = static_cast<const RGBAF16*>(context->func_get_video(0, format));
+    if (raw == nullptr) {
+        Logger::Error(L"Failed to get image data");
         return false;
+    }
+
+    hald::LUT lut{};
+    lut.level = static_cast<uint32_t>(std::round(std::cbrt(static_cast<double>(size.x()))));
+    lut.size = lut.level * lut.level;
+
+    if (size.x() != size.y() || size.x() != static_cast<int>(lut.size * lut.level)) {
+        const size_t pitch = static_cast<size_t>(size.x());
+
+        const auto rows = std::views::iota(0, size.y());
+        const Box box = std::transform_reduce(
+            std::execution::par_unseq, rows.begin(), rows.end(), Box{},
+            [](const Box& a, const Box& b) {
+                Box tmp = a;
+                return tmp.extend(b);
+            },
+            [&](int y) -> Box {
+                Box box{};
+
+                const auto* row = raw + y * size.x();
+                for (int x = 0; x < size.x(); ++x) {
+                    if (const float alpha = static_cast<float>(row[x].w()); alpha > 0.999f && alpha < 1.001f) {
+                        box.extend(Eigen::Vector2i(x, y));
+                    }
+                }
+
+                return box;
+            });
+
+        if (box.isEmpty()) {
+            Logger::Error(L"Unsupported resolution");
+            return false;
+        }
+
+        size = box.sizes() + Eigen::Vector2i::Ones();
+
+        if (size.x() != size.y()) {
+            Logger::Error(L"Unsupported resolution");
+            return false;
+        }
+
+        lut.level = static_cast<uint32_t>(std::round(std::cbrt(static_cast<double>(size.x()))));
+        lut.size = lut.level * lut.level;
+
+        if (size.x() != static_cast<int>(lut.size * lut.level)) {
+            Logger::Error(L"Unsupported resolution");
+            return false;
+        }
+
+        lut.data.resize(size.x() * size.y());
+
+        std::atomic_bool is_invalid = false;
+        Eigen::Vector2i origin = box.min();
+
+        const auto indices = std::views::iota(0uz, lut.data.size());
+        std::for_each(std::execution::par_unseq, indices.begin(), indices.end(), [&](size_t i) {
+            const auto x = (i % size.x()) + origin.x();
+            const auto y = (i / size.x()) + origin.y();
+            const auto& v = raw[x + y * pitch];
+
+            if (const float alpha = static_cast<float>(v.w()); alpha > 0.999f && alpha < 1.001f) {
+                lut.data[i] = v;
+            } else {
+                is_invalid.store(true, std::memory_order_relaxed);
+            }
+        });
+
+        if (is_invalid.load(std::memory_order_relaxed)) {
+            Logger::Error(L"Invalid image data");
+            return false;
+        }
+    } else {
+        lut.data.resize(size.x() * size.y());
+
+        std::atomic_bool is_invalid = false;
+
+        const auto indices = std::views::iota(0uz, lut.data.size());
+        std::for_each(std::execution::par_unseq, indices.begin(), indices.end(), [&](size_t i) {
+            if (const float alpha = static_cast<float>(raw[i].w()); alpha > 0.999f && alpha < 1.001f) {
+                lut.data[i] = raw[i];
+            } else {
+                is_invalid.store(true, std::memory_order_relaxed);
+            }
+        });
+
+        if (is_invalid.load(std::memory_order_relaxed)) {
+            Logger::Error(L"Invalid image data");
+            return false;
+        }
+    }
+
+    auto path = std::filesystem::path(context->savefile);
+    const auto title = path.stem().wstring();
+
+    if (path.extension().empty()) {
+        Logger::Warning(L"File extension not specified. Appending '.cube'");
+        path.replace_extension(L".cube");
     }
 
     try {
-        HaldCLUT hald{};
-
-        std::vector<RGBAF32> tmp(w * h);
-        to_rgbaf32(tmp.data(), data, w, h);
-
-        // サイズがおかしい時はリサイズを試みる (AutoClippingの閾値が1.0なやつ)
-        if (w != h || w != level * level * level) {
-            logger->info(logger, L"Resizing image data");
-
-            const size_t pitch = w;
-
-            int top = 0, bottom = h - 1, left = 0, right = w - 1;
-
-            auto is_valid = [&](int x, int y) {
-                const float a = tmp[x + y * w].a;
-                return a >= 0.999f && a <= 1.001f;
-            };
-
-            auto future = std::async(std::launch::async, [&]() {
-                bool flag = false;
-                for (int y = 0; y < h && !flag; ++y) {
-                    for (int x = 0; x < w; ++x) {
-                        if (is_valid(x, y)) {
-                            top = y;
-                            flag = true;
-                            break;
-                        }
-                    }
-                }
-            });
-
-            {
-                bool flag = false;
-                for (int y = h - 1; y >= 0 && !flag; --y) {
-                    for (int x = w - 1; x >= 0; --x) {
-                        if (is_valid(x, y)) {
-                            bottom = y;
-                            flag = true;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            future.get();
-
-            future = std::async(std::launch::async, [&]() {
-                bool flag = false;
-                for (int x = 0; x < w && !flag; ++x) {
-                    for (int y = top; y <= bottom; ++y) {
-                        if (is_valid(x, y)) {
-                            left = x;
-                            flag = true;
-                            break;
-                        }
-                    }
-                }
-            });
-
-            {
-                bool flag = false;
-                for (int x = w - 1; x >= 0 && !flag; --x) {
-                    for (int y = bottom; y >= top; --y) {
-                        if (is_valid(x, y)) {
-                            right = x;
-                            flag = true;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            future.get();
-
-            w = right - left + 1, h = bottom - top + 1;
-            level = static_cast<int>(std::round(std::cbrt(static_cast<double>(w))));
-
-            if (w != h || w != level * level * level) {
-                logger->error(
-                        logger,
-                        std::format(L"Invalid HaldCLUT size: {}x{}", w, h).c_str());
-                return false;
-            }
-
-            hald.level = static_cast<uint32_t>(level);
-            hald.data.resize(w * h);
-            const auto st = hald.data.data();
-
-            std::for_each(
-                    std::execution::par_unseq,
-                    hald.data.begin(),
-                    hald.data.end(),
-                    [&](auto &elem) {
-                        const size_t i = &elem - st;
-                        const auto x = (i % w) + left;
-                        const auto y = (i / w) + top;
-                        const auto &rgba = tmp[x + y * pitch];
-                        const auto a = std::max(rgba.a, 1.0e-4f);
-                        elem = {rgba.r / a, rgba.g / a, rgba.b / a};
-                    });
-        } else {
-            hald.level = static_cast<uint32_t>(level);
-            hald.data.resize(w * h);
-            const auto st = hald.data.data();
-
-            std::for_each(
-                    std::execution::par_unseq,
-                    hald.data.begin(),
-                    hald.data.end(),
-                    [&](auto &elem) {
-                        const auto &rgba = tmp[&elem - st];
-                        const auto a = std::max(rgba.a, 1.0e-4f);
-                        elem = {rgba.r / a, rgba.g / a, rgba.b / a};
-                    });
-        }
-
-        const auto path = std::filesystem::path(info->savefile);
-        const auto title = path.stem().u8string();
-
-        auto ext = path.extension().wstring();
-        std::ranges::for_each(ext, [](wchar_t &c) { c = std::towlower(c); });
-        if (ext == L".cube")
-            return hald.export_cube(path, title);
-        else if (ext == L".png")
-            return hald.export_png(path, title);
-        else
-            throw std::runtime_error("Invalid file extension");
-    } catch (const std::exception &e) {
-        const auto err = string::to_wstring(string::as_utf8(e.what()));
-        logger->error(logger, err.c_str());
+        return hald::Export(lut, path, title);
+    } catch (const std::exception& e) {
+        Logger::Error(string::ToWstring(string::AsUtf8(e.what())));
         return false;
     }
 }
 
-constexpr const wchar_t *
-describe_metadata() {
-    return L"TITLE: {STEM} / DOMAIN_MAX: 1.0 / DOMAIN_MIN: 0.0";
-}
+constexpr const wchar_t* Metadata() { return L"TITLE: {STEM} / DOMAIN_MAX: 1.0 / DOMAIN_MIN: 0.0"; }
+
+constinit OUTPUT_PLUGIN_TABLE info = {
+    .flag = OUTPUT_PLUGIN_TABLE::FLAG_IMAGE,
+    .name = L"LUT ファイル出力",
+    .filefilter = L"Cube LUT File (*.cube)\0*.cube\0Hald CLUT File (*.png)\0*.png\0\0",
+    .information = L"Export Cube LUT or Hald CLUT",
+    .func_output = ExportLUT,
+    .func_config = nullptr,
+    .func_get_config_text = Metadata,
+    .func_load_project_config = nullptr,
+    .func_save_project_config = nullptr,
+};
 }  // namespace
 
 namespace lut::io::exporter {
-constinit OUTPUT_PLUGIN_TABLE info = {
-        .flag = OUTPUT_PLUGIN_TABLE::FLAG_IMAGE,
-        .name = L"LUTファイル出力",
-        .filefilter =
-                L"Cube LUT File (*.cube)\0*.cube\0Hald CLUT File (*.png)\0*.png\0\0",
-        .information = L"Export Cube LUT or Hald CLUT",
-        .func_output = export_lut,
-        .func_config = nullptr,
-        .func_get_config_text = describe_metadata,
-};
-
-void
-init(LOG_HANDLE *handle) noexcept {
-    logger = handle;
-}
+void Init(HOST_APP_TABLE* host) { host->register_output_plugin(&info); }
 }  // namespace lut::io::exporter

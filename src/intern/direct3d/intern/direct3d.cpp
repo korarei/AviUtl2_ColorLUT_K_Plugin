@@ -1,3 +1,3 @@
-#include "direct3d.hpp"  // IWYU pragma: keep
+#include "../direct3d.hpp"
 
-// いつかなんか書く
+// いつか何か書く

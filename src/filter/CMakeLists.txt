@@ -5,7 +5,7 @@ project(Filter LANGUAGES CXX)
 # Library definition.
 add_library(${PROJECT_NAME} STATIC
     intern/filter.cpp
-    intern/transform.cpp
+    intern/grading.cpp
     intern/identity.cpp
 )
 
@@ -21,7 +21,7 @@ compile_pixel_shaders(${PROJECT_NAME} "${SHADERS}")
 # Include directories.
 target_include_directories(${PROJECT_NAME}
     PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${CMAKE_SOURCE_DIR}"
 )
 
 # Link libraries.
@@ -29,7 +29,6 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         Direct3D
         LUT
-        Utilities
         AviUtl2SDK
 )
 

@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.20.0)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Properties.
 set(VERSION "0.1.0" CACHE STRING "Project version")
+set(REQUIRES_AVIUTL2 "2000100" CACHE STRING "Required AviUtl2 version")
 
 project(ColorLUT_K VERSION ${VERSION} LANGUAGES CXX)
 
@@ -18,23 +18,18 @@ if (NOT CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64|amd64|AMD64)")
     message(FATAL_ERROR "This project is only for x64")
 endif()
 
-# Path settings.
 set(CMAKE_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# Interface Library
 add_library(AviUtl2SDK INTERFACE)
 target_include_directories(AviUtl2SDK INTERFACE
     "${CMAKE_CURRENT_SOURCE_DIR}/extern/aviutl2_sdk/include/aviutl2_sdk"
 )
 
-add_library(Utilities INTERFACE)
-target_include_directories(Utilities INTERFACE
-    "${CMAKE_CURRENT_SOURCE_DIR}/intern"
-)
-
-# Compiler Dependent Options.
 if (MSVC)
-    # Runtime Linkage.
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "19.50")
+        message(FATAL_ERROR "MSVC version 19.50 or higher is required")
+    endif()
+
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
     add_compile_options(
@@ -66,37 +61,38 @@ add_compile_definitions(
     _UNICODE
     NOMINMAX
     WIN32_LEAN_AND_MEAN
-    VERSION=L"${VERSION}"
+    EIGEN_MPL2_ONLY
+    VERSION=L"${PROJECT_VERSION}"
+    REQUIRES_AVIUTL2=${REQUIRES_AVIUTL2}u
 )
 
-# Subdirectories.
+add_subdirectory(intern/aviutl)
 add_subdirectory(intern/pixel)
 add_subdirectory(intern/wic)
-add_subdirectory(intern/lut)
+
 add_subdirectory(intern/direct3d)
+add_subdirectory(intern/lut)
+
 add_subdirectory(filter)
 add_subdirectory(io)
 
-# Main target definition.
 add_library(${PROJECT_NAME} SHARED
     main.def
     main.cpp
 )
 
-# Library Link.
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        WIC
+        AviUtl
         Filter
         IO
-        AviUtl2SDK
+        LUT
+        WIC
 )
 
-# Output settings.
 set_target_properties(${PROJECT_NAME} PROPERTIES
     PREFIX ""
     SUFFIX ".aux2"
 )
 
-# C++ version specification.
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23)
