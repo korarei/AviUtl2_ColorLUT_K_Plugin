@@ -6,8 +6,7 @@ Original implementation by Mark Jarzynski & Marc Olano
 https://github.com/markjarzynski/PCG3D/blob/master/LICENSE
 */
 
-uint4
-pcg4d(uint4 v) {
+uint4 pcg4d(uint4 v) {
     v = v * 1664525u + 1013904223u;
 
     v.x += v.y * v.w;
@@ -25,13 +24,11 @@ pcg4d(uint4 v) {
     return v;
 }
 
-inline float
-hash(float4 i) {
+inline float hash(float4 i) {
     return dot(pcg4d(uint4(i)), 1u) / 4294967295.0;
 }
 
-float3
-rgb2hsy(float3 c) {
+float3 rgb2hsy(float3 c) {
     const float4 k = float4(0.0, -rcp(3.0), 2.0 * rcp(3.0), -1.0);
     const float4 p = lerp(float4(c.bg, k.wz), float4(c.gb, k.xy), step(c.b, c.g));
     const float4 q = lerp(float4(p.xyw, c.r), float4(c.r, p.yzx), step(p.x, c.r));
@@ -41,8 +38,7 @@ rgb2hsy(float3 c) {
     return float3(h, s, y);
 }
 
-float3
-hsy2rgb(float3 c) {
+float3 hsy2rgb(float3 c) {
     const float4 k = float4(1.0, 2.0 * rcp(3.0), rcp(3.0), 3.0);
     const float3 p = abs(frac(c.xxx + k.xyz) * 6.0 - k.www);
     const float3 q = saturate(p - k.xxx) * c.y;
@@ -54,143 +50,116 @@ hsy2rgb(float3 c) {
     return mad(c - l, min(1.0, (1.0 - l) * rcp(max(x - l, eps))), l);
 }
 
-inline float3
-darken(float3 base, float3 src) {
+inline float3 darken(float3 base, float3 src) {
     return min(base, src);
 }
 
-inline float3
-multiply(float3 base, float3 src) {
+inline float3 multiply(float3 base, float3 src) {
     return base * src;
 }
 
-inline float3
-color_burn(float3 base, float3 src) {
+inline float3 color_burn(float3 base, float3 src) {
     return lerp(saturate(mad(base - 1.0, rcp(max(src, eps)), 1.0)), 0.0, step(src, 0.0));
 }
 
-inline float3
-linear_burn(float3 base, float3 src) {
+inline float3 linear_burn(float3 base, float3 src) {
     return base + src - 1.0;
 }
 
-inline float3
-darker_color(float3 base, float3 src) {
+inline float3 darker_color(float3 base, float3 src) {
     return lerp(base, src, step(dot(src, 1.0), dot(base, 1.0)));
 }
 
-inline float3
-lighten(float3 base, float3 src) {
+inline float3 lighten(float3 base, float3 src) {
     return max(base, src);
 }
 
-inline float3
-screen(float3 base, float3 src) {
+inline float3 screen(float3 base, float3 src) {
     return mad(base - 1.0, 1.0 - src, 1.0);
 }
 
-inline float3
-color_dodge(float3 base, float3 src) {
+inline float3 color_dodge(float3 base, float3 src) {
     return lerp(lerp(min(base * rcp(max(1.0 - src, eps)), 1.0), 1.0, step(1.0, src)), 0.0, step(abs(base), eps));
 }
 
-inline float3
-linear_dodge(float3 base, float3 src) {
+inline float3 linear_dodge(float3 base, float3 src) {
     return base + src;
 }
 
-inline float3
-lighter_color(float3 base, float3 src) {
+inline float3 lighter_color(float3 base, float3 src) {
     return lerp(src, base, step(dot(src, 1.0), dot(base, 1.0)));
 }
 
-inline float3
-overlay(float3 base, float3 src) {
+inline float3 overlay(float3 base, float3 src) {
     return lerp(2.0 * base * src, mad(mad(2.0, base, -2.0), 1.0 - src, 1.0), step(0.5, base));
 }
 
 
-inline float3
-soft_light(float3 base, float3 src) {
+inline float3 soft_light(float3 base, float3 src) {
     const float3 d = lerp(sqrt(max(base, 0.0)), mad(mad(16.0, base, -12.0), base, 4.0) * base, step(base, 0.25));
     const float3 p = mad(2.0, src, -1.0);
     return lerp(mad(p, (d - base), base), mad(p, mad(base, -base, base), base), step(src, 0.5));
 }
 
 /*
-inline float3
-soft_light(float3 base, float3 src) {
+inline float3 soft_light(float3 base, float3 src) {
     return mad(mad(base, -base, base), mad(2.0, src, -1.0), base);
 }
 */
 
-inline float3
-hard_light(float3 base, float3 src) {
+inline float3 hard_light(float3 base, float3 src) {
     return overlay(src, base);
 }
 
-inline float3
-linear_light(float3 base, float3 src) {
+inline float3 linear_light(float3 base, float3 src) {
     return mad(2.0, src, base - 1.0);
 }
 
-inline float3
-vivid_light(float3 base, float3 src) {
+inline float3 vivid_light(float3 base, float3 src) {
     return lerp(color_burn(base, 2.0 * src), color_dodge(base, mad(2.0, src, -1.0)), step(0.5, src));
 }
 
-inline float3
-pin_light(float3 base, float3 src) {
+inline float3 pin_light(float3 base, float3 src) {
     return lerp(min(base, 2.0 * src), max(base, mad(2.0, src, -1.0)), step(0.5, src));
 }
 
-inline float3
-hard_mix(float3 base, float3 src) {
+inline float3 hard_mix(float3 base, float3 src) {
     return step(1.0, base + src);
 }
 
-inline float3
-difference(float3 base, float3 src) {
+inline float3 difference(float3 base, float3 src) {
     return abs(base - src);
 }
 
-inline float3
-exclusion(float3 base, float3 src) {
+inline float3 exclusion(float3 base, float3 src) {
     return mad(-2.0, base * src, base + src);
 }
 
-inline float3
-subtract(float3 base, float3 src) {
+inline float3 subtract(float3 base, float3 src) {
     return base - src;
 }
 
-inline float3
-divide(float3 base, float3 src) {
+inline float3 divide(float3 base, float3 src) {
     return base * rcp(max(abs(src), eps) * mad(2.0, step(0.0, src), -1.0));
 }
 
-inline float3
-hue(float3 base, float3 src) {
+inline float3 hue(float3 base, float3 src) {
     return hsy2rgb(float3(rgb2hsy(src).x, rgb2hsy(base).yz));
 }
 
-inline float3
-saturation(float3 base, float3 src) {
+inline float3 saturation(float3 base, float3 src) {
     return hsy2rgb(float3(rgb2hsy(base).x, rgb2hsy(src).y, rgb2hsy(base).z));
 }
 
-inline float3
-color(float3 base, float3 src) {
+inline float3 color(float3 base, float3 src) {
     return hsy2rgb(float3(rgb2hsy(src).xy, rgb2hsy(base).z));
 }
 
-inline float3
-luminosity(float3 base, float3 src) {
+inline float3 luminosity(float3 base, float3 src) {
     return hsy2rgb(float3(rgb2hsy(base).xy, rgb2hsy(src).z));
 }
 
-float4
-blend(float4 src, float4 base, int blend_mode, float opacity, float should_clamp, float4 seed) {
+float4 blend(float4 src, float4 base, int blend_mode, float opacity, float should_clamp, float4 seed) {
     src = saturate(src);
     base = saturate(base);
 

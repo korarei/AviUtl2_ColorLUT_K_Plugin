@@ -6,7 +6,7 @@ project(Filter LANGUAGES CXX)
 add_library(${PROJECT_NAME} STATIC
     intern/filter.cpp
     intern/grading.cpp
-    intern/identity.cpp
+    intern/object.cpp
 )
 
 # Shader compilation.
@@ -14,7 +14,7 @@ include(${CMAKE_SCRIPTS}/CompileShaders.cmake)
 set(SHADERS
     "${CMAKE_CURRENT_SOURCE_DIR}/intern/shaders/lut1d.hlsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/intern/shaders/lut3d.hlsl"
-    "${CMAKE_CURRENT_SOURCE_DIR}/intern/shaders/identity.hlsl"
+    "${CMAKE_CURRENT_SOURCE_DIR}/intern/shaders/hald.hlsl"
 )
 compile_pixel_shaders(${PROJECT_NAME} "${SHADERS}")
 
@@ -27,9 +27,9 @@ target_include_directories(${PROJECT_NAME}
 # Link libraries.
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
+        AviUtl2SDK
         Direct3D
         LUT
-        AviUtl2SDK
 )
 
 # C++ version specification.

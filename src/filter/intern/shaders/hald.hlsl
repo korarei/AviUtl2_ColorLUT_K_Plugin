@@ -2,8 +2,7 @@ cbuffer params : register(b0) {
     uint level;
 }
 
-float4
-main(float4 pos : SV_Position) : SV_Target {
+float4 main(float4 pos : SV_Position) : SV_Target {
     const uint size  = level * level;
     const uint idx = uint(pos.x) + uint(pos.y) * level * size;
 
