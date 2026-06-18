@@ -61,6 +61,6 @@ constexpr void OnDrop(EDIT_SECTION* edit, const wchar_t* file) {
 
 namespace lut::io::importer {
 void Init(HOST_APP_TABLE* host) {
-    host->register_file_drop_handler(L"LUTフィルタをレイヤーに追加", L"Cube LUT File (*.cube)\0*.cube\0\0", OnDrop);
+    host->register_file_drop_handler(L"LUT フィルタをレイヤーに追加", L"Cube LUT File (*.cube)\0*.cube\0\0", OnDrop);
 }
 }  // namespace lut::io::importer
