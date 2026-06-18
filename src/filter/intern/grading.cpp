@@ -111,12 +111,12 @@ auto& blend_mode = reinterpret_cast<FILTER_ITEM_SELECT*>(props[3])->value;
 auto& opacity = reinterpret_cast<FILTER_ITEM_TRACK*>(props[4])->value;
 auto& clamp = reinterpret_cast<FILTER_ITEM_CHECK*>(props[5])->value;
 
-constexpr bool Apply(FILTER_PROC_VIDEO* context) {
+bool Apply(FILTER_PROC_VIDEO* ctx) {
     if (file[0] == L'\0') {
         return true;
     }
 
-    const int w = context->object->width, h = context->object->height;
+    const int w = ctx->object->width, h = ctx->object->height;
 
     if (w < 1 || h < 1) {
         return false;
@@ -130,14 +130,14 @@ constexpr bool Apply(FILTER_PROC_VIDEO* context) {
     };
 
     try {
-        const auto tex = context->get_image_texture2d();
+        const auto tex = ctx->get_image_texture2d();
         const auto ctrl = d3d.Init(tex, []() { LUTCache::Reset(); });
 
         const auto dst = ctrl.GetBackBuffer(tex);
         const auto src = ctrl.CopyBuffer<0uz>(tex, w, h);
 
         {
-            const auto entry = LUTCache::Find(context->object->effect_id, file);
+            const auto entry = LUTCache::Find(ctx->object->effect_id, file);
             auto& lut = *entry;
 
             if (!lut.has_value()) {

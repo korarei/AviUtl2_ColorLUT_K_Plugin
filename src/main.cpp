@@ -8,7 +8,6 @@
 #include <intern/lut/lut.hpp>
 #include <intern/wic/wic.hpp>
 #include <io/io.hpp>
-#include "intern/lut/lut.hpp"
 
 #ifndef VERSION
 #define VERSION L"0.1.0"

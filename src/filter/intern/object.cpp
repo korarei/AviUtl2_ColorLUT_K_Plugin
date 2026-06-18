@@ -8,13 +8,10 @@
 #pragma warning(pop)
 
 #include <intern/aviutl/aviutl.hpp>
-#include <intern/string.hpp>
 
 #include <hald.h>
 
 namespace {
-namespace string = lut::string;
-
 using Logger = lut::aviutl::Logger;
 
 uintptr_t* props = []() {
@@ -31,24 +28,18 @@ uintptr_t* props = []() {
 
 auto& level = reinterpret_cast<FILTER_ITEM_TRACK*>(props[0])->value;
 
-constexpr bool Draw(FILTER_PROC_VIDEO* context) {
+constexpr bool Draw(FILTER_PROC_VIDEO* ctx) {
     uint32_t lv = static_cast<uint32_t>(level);
 
-    try {
-        const int size = static_cast<int>(lv * lv * lv);
-        context->set_image_data(nullptr, size, size);
+    const int size = static_cast<int>(lv * lv * lv);
+    ctx->set_image_data(nullptr, size, size);
 
-        if (!context->exec_pixelshader_data(g_hald, sizeof(g_hald), L"object", nullptr, 0, &lv, sizeof(uint32_t),
-                                            nullptr, nullptr)) {
-            Logger::Error(L"Failed to execute pixel shader");
-            return false;
-        }
-
-        return true;
-    } catch (const std::exception& e) {
-        Logger::Error(string::ToWstring(string::AsUtf8(e.what())));
+    if (!ctx->exec_pixelshader_data(g_hald, sizeof(g_hald), nullptr, nullptr, 0, &lv, sizeof(lv), nullptr, nullptr)) {
+        Logger::Error(L"Failed to execute pixel shader");
         return false;
     }
+
+    return true;
 }
 
 FILTER_PLUGIN_TABLE info = {
