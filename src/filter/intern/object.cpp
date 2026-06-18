@@ -8,7 +8,6 @@
 #pragma warning(pop)
 
 #include <intern/aviutl/aviutl.hpp>
-#include <intern/direct3d/direct3d.hpp>
 #include <intern/string.hpp>
 
 #include <hald.h>
