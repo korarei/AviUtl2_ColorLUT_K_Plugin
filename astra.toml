@@ -5,27 +5,29 @@ requires-astra = ">=0.6.2"
 name = "ColorLUT_K"
 version = "0.1.0"
 author = "Korarei"
+requires-aviutl2 = "2004800"
 
 [build]
 [[build.plugins]]
-id = "lut"
+id = "core"
 shell = "pwsh"
+variables = { SOURCE = "./src" }
 
 [build.plugins.release]
 commands = '''
-$src = "./src"
-cmake -S "$src" -B "$env:BUILD_DIRECTORY/Release" -G Ninja -DCMAKE_BUILD_TYPE=Release -DVERSION="$env:PROJECT_VERSION"
-cp "$env:BUILD_DIRECTORY/Release/compile_commands.json" "$src"
-cmake --build "$env:BUILD_DIRECTORY/Release"
+$dst = "$env:BUILD_DIRECTORY/Release"
+cmake -S "$env:SOURCE" -B "$dst" --preset release -DREQUIRES_AVIUTL2="$env:PROJECT_REQUIRES_AVIUTL2" -DVERSION="$env:PROJECT_VERSION"
+cp "$dst/compile_commands.json" "$env:SOURCE"
+cmake --build "$dst"
 '''
 artifacts = ["${BUILD_DIRECTORY}/Release/*.aux2"]
 
 [build.plugins.debug]
 commands = '''
-$src = "./src"
-cmake -S "$src" -B "$env:BUILD_DIRECTORY/Debug" -G Ninja -DCMAKE_BUILD_TYPE=Debug
-cp "$env:BUILD_DIRECTORY/Debug/compile_commands.json" "$src"
-cmake --build "$env:BUILD_DIRECTORY/Debug"
+$dst = "$env:BUILD_DIRECTORY/Debug"
+cmake -S "$env:SOURCE" -B "$dst" --preset debug -DREQUIRES_AVIUTL2="$env:PROJECT_REQUIRES_AVIUTL2"
+cp "$dst/compile_commands.json" "$env:SOURCE"
+cmake --build "$dst"
 '''
 artifacts = ["${BUILD_DIRECTORY}/Debug/*.aux2"]
 
@@ -38,15 +40,27 @@ report-issue = "https://github.com/korarei/AviUtl2_ColorLUT_K_Plugin/issues"
 summary = "AviUtl ExEdit2でLUTファイルを扱えるようにするプラグイン"
 description = """
 以下の機能が追加される
-- 色調整 -> ColorLUT_K: LUTファイルを用いた色調補正
-- LUT -> HaldCLUT_K: Hald CLUT (画像形式のLUT) のメディアオブジェクト
-- ファイル -> ファイル出力 -> LUTファイル出力: 画像をLUTファイルとして出力する
-- ファイルドロップ -> LUTフィルタをレイヤーに追加: LUTファイルをD&Dでレイヤーに追加する
+
+フィルタ
+
+- 色調整\\ColorLUT_K: LUT ファイルを用いた色調補正
+
+メディアオブジェクト
+
+- LUT\\HaldCLUT_K: Hald CLUT (画像形式のLUT)
+
+ファイルドロップ
+
+- LUT フィルタをレイヤーに追加: LUT ファイルを D&D でレイヤーに追加する
+
+ファイル出力
+
+- LUT ファイルを出力: 画像を LUT ファイルとして出力する
 """
 
 [[release.contents.extensions]]
 directory = "Plugin/${PROJECT_NAME}"
-files = ["plugin:lut"]
+files = ["plugin:core"]
 
 [[release.contents.documents]]
 directory = "Plugin/${PROJECT_NAME}"

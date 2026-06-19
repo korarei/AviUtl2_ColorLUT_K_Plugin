@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.20.0)
 
-project(LUT LANGUAGES CXX)
+project(AviUtl LANGUAGES CXX)
 
 add_library(${PROJECT_NAME} STATIC
-    intern/lut.cpp
+    intern/aviutl.cpp
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -13,9 +13,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        Pixel
-    PRIVATE
-        WIC
+        AviUtl2SDK
 )
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)

@@ -1,0 +1,108 @@
+#pragma once
+
+#include <cstdint>
+#include <memory>
+#include <mutex>
+#include <shared_mutex>
+#include <string>
+#include <unordered_map>
+
+namespace lut::cache {
+template <typename T, typename Name = std::wstring>
+class Cache {
+  public:
+    struct Entry {
+        std::mutex mtx;
+        Name name;
+        T cache;
+
+        constexpr explicit Entry(const Name& n) : name(n) {}
+    };
+
+    class LockedEntry {
+      public:
+        explicit LockedEntry(std::shared_ptr<Entry> e) : entry(std::move(e)), lock(entry->mtx) {}
+
+        [[nodiscard]] constexpr T* operator->() const noexcept { return &entry->cache; }
+        [[nodiscard]] constexpr T& operator*() const noexcept { return entry->cache; }
+
+      private:
+        std::shared_ptr<Entry> entry;
+        std::unique_lock<std::mutex> lock;
+    };
+
+    Cache(const Cache&) = delete;
+    Cache& operator=(const Cache&) = delete;
+    Cache(Cache&&) = delete;
+    Cache& operator=(Cache&&) = delete;
+
+    constexpr Cache() = default;
+    constexpr ~Cache() = default;
+
+    [[nodiscard]] LockedEntry Fetch(int64_t id, const Name& name) {
+        {
+            std::shared_lock lock(mtx);
+            if (auto it = id_to_cache.find(id); it != id_to_cache.end()) {
+                if (auto entry = it->second; entry != nullptr && entry->name == name)
+                    return LockedEntry{std::move(entry)};
+            }
+        }
+
+        std::unique_lock lock(mtx);
+        if (auto it = id_to_cache.find(id); it != id_to_cache.end()) {
+            if (auto entry = it->second; entry != nullptr && entry->name == name) return LockedEntry{std::move(entry)};
+
+            Release(id);
+        }
+
+        std::shared_ptr<Entry> entry;
+        if (auto it = name_to_cache.find(name); it != name_to_cache.end()) {
+            entry = it->second.lock();
+            if (entry == nullptr) name_to_cache.erase(it);
+        }
+
+        if (entry == nullptr) {
+            entry = std::make_shared<Entry>(name);
+            name_to_cache[name] = entry;
+        }
+
+        return LockedEntry{id_to_cache[id] = std::move(entry)};
+    }
+
+    constexpr void Reset(int64_t id) {
+        std::unique_lock lock(mtx);
+        Release(id);
+    }
+
+    constexpr void Reset(const Name& name) {
+        std::unique_lock lock(mtx);
+        Release(name);
+    }
+
+    constexpr void Reset() {
+        std::unique_lock lock(mtx);
+        std::unordered_map<Name, std::weak_ptr<Entry>>{}.swap(name_to_cache);
+        std::unordered_map<int64_t, std::shared_ptr<Entry>>{}.swap(id_to_cache);
+    }
+
+  private:
+    std::shared_mutex mtx;
+    std::unordered_map<Name, std::weak_ptr<Entry>> name_to_cache;
+    std::unordered_map<int64_t, std::shared_ptr<Entry>> id_to_cache;
+
+    constexpr void Release(int64_t id) {
+        if (auto node = id_to_cache.extract(id)) {
+            const auto& entry = node.mapped();
+            if (entry != nullptr) {
+                if (auto it = name_to_cache.find(entry->name); it != name_to_cache.end() && it->second.expired())
+                    name_to_cache.erase(it);
+            }
+        }
+    }
+
+    constexpr void Release(const Name& name) {
+        if (auto node = name_to_cache.extract(name))
+            std::erase_if(id_to_cache, [&](const auto& e) { return e.second != nullptr && e.second->name == name; });
+    }
+};
+}  // namespace lut::cache

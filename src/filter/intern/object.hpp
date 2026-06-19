@@ -2,9 +2,8 @@
 
 #include <windows.h>
 
-#include <logger2.h>
 #include <plugin2.h>
 
-namespace lut::io::importer {
+namespace lut::filter::object {
 void Init(HOST_APP_TABLE* host);
-}  // namespace lut::io::importer
+}  // namespace lut::filter::object

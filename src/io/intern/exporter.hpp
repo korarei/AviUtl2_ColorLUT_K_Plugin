@@ -2,12 +2,10 @@
 
 #include <windows.h>
 
-#include <logger2.h>
-#include <output2.h>
+#include <plugin2.h>
 
 namespace lut::io::exporter {
-extern OUTPUT_PLUGIN_TABLE info;
+void Init(HOST_APP_TABLE* host);
 
-void
-init(LOG_HANDLE *logger) noexcept;
+void Deinit();
 }  // namespace lut::io::exporter

@@ -8,10 +8,9 @@ cbuffer params : register(b0) {
     float opacity;
     float should_clamp;
     float seed;
-};
+}
 
-float4
-main(float4 pos : SV_Position) : SV_Target {
+float4 main(float4 pos : SV_Position) : SV_Target {
     float3 size;
     lut.GetDimensions(size.x, size.y, size.z);
 
