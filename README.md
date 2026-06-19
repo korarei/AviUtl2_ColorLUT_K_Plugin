@@ -70,7 +70,7 @@ AviUtl ExEdit2でLUTファイルを扱えるようにするプラグイン．
 
 - LUT File: LUT ファイルを指定する
 - Reload LUT: `LUT File` で指定した LUT を再読み込みする
-- Blend Mode: 合成時のブレンドモード
+- Compositing::Blend Mode: 合成時のブレンドモード
   - Normal: 通常
   - Dissolve: ディザ合成
   - Darken: 比較 (暗)
@@ -98,11 +98,11 @@ AviUtl ExEdit2でLUTファイルを扱えるようにするプラグイン．
   - Saturation: 彩度
   - Color: カラー
   - Luminosity: 輝度
-- Opacity: エフェクトの適用度合
-- Clamp: 合成結果を `[0, 1]` にクランプする
+- Compositing::Opacity: エフェクトの適用度合
+- Compositing::Clamp: 合成結果を `[0, 1]` にクランプする
 
 > [!NOTE]
-> - `Clamp` にチェックがない場合，合成結果が `[0, 1]` の範囲を超えてしまうことがある．
+> - `Compositing::Clamp` にチェックがない場合，合成結果が `[0, 1]` の範囲を超えてしまうことがある．
 > - Hue, Saturation, Color, Luminosity は Photoshop で採用されている HSL をベースにしている．
 > - AviUtl の合成モードで陰影は焼き込み (リニア)，明暗はリニアライト，色差はカラーに対応する．
 

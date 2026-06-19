@@ -63,57 +63,67 @@ constexpr D3D11_SAMPLER_DESC kSampler{
 
 Direct3D d3d({PixelShaderDesc{g_lut1d, sizeof(Params), kSampler}, PixelShaderDesc{g_lut3d, sizeof(Params), kSampler}});
 
-uintptr_t* props = []() {
-    static FILTER_ITEM_FILE file(L"LUT File", L"",
-                                 L"Cube LUT File (*.cube)\0*.cube\0"
-                                 L"Hald CLUT File (*.bmp;*.png;*.tiff;*.tif)\0*.bmp;*.png;*.tiff;*.tif;\0\0");
-    static FILTER_ITEM_BUTTON reload(L"Reload LUT", [](EDIT_SECTION* edit) {
-        LUTCache::Reset(file.value);
-        edit->set_cursor_layer_frame(edit->info->layer, edit->info->frame);
-    });
-    static FILTER_ITEM_GROUP group_compositing(L"Compositing", false);
-    static FILTER_ITEM_SELECT::ITEM blend_modes[] = {
-        {L"Normal", 0},
-        {L"Dissolve", 1},
-        {L"Darken", 2},
-        {L"Multiply", 3},
-        {L"Color Burn", 4},
-        {L"Linear Burn", 5},
-        {L"Darker Color", 6},
-        {L"Lighten", 7},
-        {L"Screen", 8},
-        {L"Color Dodge", 9},
-        {L"Linear Dodge (Add)", 10},
-        {L"Lighter Color", 11},
-        {L"Overlay", 12},
-        {L"Soft Light", 13},
-        {L"Hard Light", 14},
-        {L"Linear Light", 15},
-        {L"Vivid Light", 16},
-        {L"Pin Light", 17},
-        {L"Hard Mix", 18},
-        {L"Difference", 19},
-        {L"Exclusion", 20},
-        {L"Subtract", 21},
-        {L"Divide", 22},
-        {L"Hue", 23},
-        {L"Saturation", 24},
-        {L"Color", 25},
-        {L"Luminosity", 26},
-        {nullptr, -1},
-    };
-    static FILTER_ITEM_SELECT blend_mode(L"Blend Mode", 0, blend_modes);
-    static FILTER_ITEM_TRACK opacity(L"Opacity", 100.0, 0.0, 100.0, 0.01);
-    static FILTER_ITEM_CHECK clamp(L"Clamp", false);
+namespace property {
+FILTER_ITEM_FILE file(L"LUT File", L"",
+                      L"Cube LUT File (*.cube)\0*.cube\0"
+                      L"Hald CLUT File (*.bmp;*.png;*.tiff;*.tif)\0*.bmp;*.png;*.tiff;*.tif;\0\0");
+FILTER_ITEM_BUTTON reload(L"Reload LUT", [](EDIT_SECTION* edit) {
+    LUTCache::Reset(file.value);
+    edit->set_cursor_layer_frame(edit->info->layer, edit->info->frame);
+});
 
-    static void* items[] = {&file, &reload, &group_compositing, &blend_mode, &opacity, &clamp, nullptr};
-    return reinterpret_cast<uintptr_t*>(items);
-}();
+namespace compositing {
+FILTER_ITEM_GROUP name(L"Compositing", false);
+FILTER_ITEM_SELECT::ITEM blend_modes[] = {
+    {L"Normal", 0},
+    {L"Dissolve", 1},
+    {L"Darken", 2},
+    {L"Multiply", 3},
+    {L"Color Burn", 4},
+    {L"Linear Burn", 5},
+    {L"Darker Color", 6},
+    {L"Lighten", 7},
+    {L"Screen", 8},
+    {L"Color Dodge", 9},
+    {L"Linear Dodge (Add)", 10},
+    {L"Lighter Color", 11},
+    {L"Overlay", 12},
+    {L"Soft Light", 13},
+    {L"Hard Light", 14},
+    {L"Linear Light", 15},
+    {L"Vivid Light", 16},
+    {L"Pin Light", 17},
+    {L"Hard Mix", 18},
+    {L"Difference", 19},
+    {L"Exclusion", 20},
+    {L"Subtract", 21},
+    {L"Divide", 22},
+    {L"Hue", 23},
+    {L"Saturation", 24},
+    {L"Color", 25},
+    {L"Luminosity", 26},
+    {nullptr, -1},
+};
+FILTER_ITEM_SELECT blend_mode(L"Compositing::Blend Mode", 0, blend_modes);
+FILTER_ITEM_TRACK opacity(L"Compositing::Opacity", 100.0, 0.0, 100.0, 0.01);
+FILTER_ITEM_CHECK clamp(L"Compositing::Clamp", false);
+}  // namespace compositing
+}  // namespace property
 
-auto& file = reinterpret_cast<FILTER_ITEM_FILE*>(props[0])->value;
-auto& blend_mode = reinterpret_cast<FILTER_ITEM_SELECT*>(props[3])->value;
-auto& opacity = reinterpret_cast<FILTER_ITEM_TRACK*>(props[4])->value;
-auto& clamp = reinterpret_cast<FILTER_ITEM_CHECK*>(props[5])->value;
+void* props[] = {
+    &property::file,
+    &property::reload,
+    &property::compositing::name,
+    &property::compositing::blend_mode,
+    &property::compositing::opacity,
+    &property::compositing::clamp,
+    nullptr,
+};
+
+auto& file = property::file.value;
+auto& blend_mode = property::compositing::blend_mode.value;
+auto& opacity = property::compositing::opacity.value;
+auto& clamp = property::compositing::clamp.value;
 
 bool Apply(FILTER_PROC_VIDEO* ctx) {
     if (file[0] == L'\0') {
@@ -229,12 +239,12 @@ bool Apply(FILTER_PROC_VIDEO* ctx) {
     }
 }
 
-FILTER_PLUGIN_TABLE info = {
+constinit FILTER_PLUGIN_TABLE info = {
     .flag = FILTER_PLUGIN_TABLE::FLAG_VIDEO | FILTER_PLUGIN_TABLE::FLAG_FILTER,
     .name = L"ColorLUT_K",
     .label = L"色調整",
     .information = L"ColorLUT_K v" VERSION L" by Korarei",
-    .items = reinterpret_cast<void**>(props),
+    .items = props,
     .func_proc_video = Apply,
     .func_proc_audio = nullptr,
 };
