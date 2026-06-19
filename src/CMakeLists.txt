@@ -4,6 +4,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(VERSION "0.1.0" CACHE STRING "Project version")
 set(REQUIRES_AVIUTL2 "2000100" CACHE STRING "Required AviUtl2 version")
 
+if(NOT REQUIRES_AVIUTL2 MATCHES "^[0-9]+$")
+    message(FATAL_ERROR "'REQUIRES_AVIUTL2' must be non-empty numeric string")
+endif()
+
 project(ColorLUT_K VERSION ${VERSION} LANGUAGES CXX)
 
 if (NOT WIN32)
@@ -19,6 +23,7 @@ if (NOT CMAKE_SYSTEM_PROCESSOR MATCHES "(x86_64|amd64|AMD64)")
 endif()
 
 set(CMAKE_SCRIPTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 add_library(AviUtl2SDK INTERFACE)
 target_include_directories(AviUtl2SDK INTERFACE
@@ -30,36 +35,39 @@ if (MSVC)
         message(FATAL_ERROR "MSVC version 19.50 or higher is required")
     endif()
 
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-
     add_compile_options(
         /utf-8
         /arch:AVX2
-        /W4 # Warning Level 4.
-        /permissive- # Standards-based mode.
+        /sdl
+        /EHsc
+        /W4
+        /permissive-
 
-        # Release-only optimizations.
         $<$<CONFIG:Release>:/O2>
-        $<$<CONFIG:Release>:/GL> # Link Optimization.
-        $<$<CONFIG:Release>:/Gy> # Split by function. (Remove unused functions.)
+        $<$<CONFIG:Release>:/GL>
+        $<$<CONFIG:Release>:/Gy>
 
-        # Debug settings.
         $<$<CONFIG:Debug>:/Od>
-        $<$<CONFIG:Debug>:/Zi> # Debugging Information.
+        $<$<CONFIG:Debug>:/Zi>
     )
 
     add_link_options(
-        $<$<CONFIG:Release>:/LTCG> # Runtime Optimization.
-        $<$<CONFIG:Debug>:/DEBUG> # Link with debug information.
+        $<$<CONFIG:Release>:/LTCG>
+        $<$<CONFIG:Release>:/OPT:REF>
+        $<$<CONFIG:Release>:/OPT:ICF>
+
+        $<$<CONFIG:Debug>:/DEBUG>
     )
 else()
     message(FATAL_ERROR "This project is only for MSVC")
 endif()
 
 add_compile_definitions(
+    NOMINMAX
     UNICODE
     _UNICODE
-    NOMINMAX
+    STRICT
+    STRICT_TYPED_ITEMIDS
     WIN32_LEAN_AND_MEAN
     EIGEN_MPL2_ONLY
     VERSION=L"${PROJECT_VERSION}"
@@ -77,6 +85,7 @@ add_subdirectory(filter)
 add_subdirectory(io)
 
 add_library(${PROJECT_NAME} SHARED
+    intern/resource.rc
     main.def
     main.cpp
 )

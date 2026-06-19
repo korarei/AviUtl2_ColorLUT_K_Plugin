@@ -21,8 +21,8 @@ namespace {
 using namespace lut;
 
 constinit COMMON_PLUGIN_TABLE info = {
-    .name = L"ColorLUT_K",
-    .information = L"ColorLUT_K v" VERSION L" by Korarei",
+    .name = L"ColorLUT_K Hub",
+    .information = L"ColorLUT_K Hub v" VERSION L" by Korarei",
 };
 }  // namespace
 
@@ -35,6 +35,8 @@ bool InitializePlugin(DWORD version) { return version >= RequiredVersion(); }
 
 void UninitializePlugin() {
     lut::filter::Deinit();
+    lut::io::Deinit();
+
     lut::LUTCache::Reset();
     lut::wic::WIC::Deinit();
 }

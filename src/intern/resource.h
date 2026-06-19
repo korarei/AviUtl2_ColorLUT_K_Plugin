@@ -1,0 +1,5 @@
+#pragma once
+
+#define IDD_EXPORT_DIALOG 1000
+
+#define IDC_EXPORT_TITLE_EDIT 2000

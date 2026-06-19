@@ -1,20 +1,32 @@
 #include "exporter.hpp"
 
-#include <mmsystem.h>
-
 #include <algorithm>
+#include <cwctype>
 #include <execution>
 #include <filesystem>
+#include <format>
+#include <mutex>
 #include <ranges>
+#include <string>
 
 #include <Eigen/Dense>
 
 #include <output2.h>
 
+#include <intern/resource.h>
 #include <intern/aviutl/aviutl.hpp>
 #include <intern/lut/lut.hpp>
 #include <intern/pixel/pixel.hpp>
 #include <intern/string.hpp>
+
+#ifndef MAKEFOURCC
+#define MAKEFOURCC(ch0, ch1, ch2, ch3) \
+    ((DWORD)(BYTE)(ch0) | ((DWORD)(BYTE)(ch1) << 8) | ((DWORD)(BYTE)(ch2) << 16) | ((DWORD)(BYTE)(ch3) << 24))
+#endif
+
+#ifndef VERSION
+#define VERSION L"0.1.0"
+#endif
 
 namespace {
 namespace string = lut::string;
@@ -24,17 +36,87 @@ using Logger = lut::aviutl::Logger;
 using Box = Eigen::AlignedBox2i;
 using RGBAF16 = lut::pixel::RGBAF16;
 
-constexpr bool ExportLUT(OUTPUT_INFO* context) {
-    constexpr DWORD format = MAKEFOURCC('H', 'F', '6', '4');
+struct DialogData {
+    std::mutex mtx;
+    std::wstring metadata = L"TITLE: ${STEM} / DOMAIN_MAX: 1.0 / DOMAIN_MIN: 0.0";
+    std::wstring title = L"${STEM}";
+};
 
-    Eigen::Vector2i size{context->w, context->h};
+DialogData dialog_data{};
+
+INT_PTR CALLBACK DlgProc(HWND hwnd, UINT msg, WPARAM wp, [[maybe_unused]] LPARAM lp) {
+    switch (msg) {
+        case WM_INITDIALOG: {
+            {
+                std::lock_guard<std::mutex> lock(dialog_data.mtx);
+
+                SetDlgItemText(hwnd, IDC_EXPORT_TITLE_EDIT, dialog_data.title.c_str());
+            }
+
+            SetFocus(GetDlgItem(hwnd, IDOK));
+            return FALSE;
+        }
+        case WM_COMMAND:
+            if (LOWORD(wp) == IDOK) {
+                const int len = GetWindowTextLength(GetDlgItem(hwnd, IDC_EXPORT_TITLE_EDIT));
+
+                std::wstring tmp(len, L'\0');
+                GetDlgItemText(hwnd, IDC_EXPORT_TITLE_EDIT, tmp.data(), len + 1);
+
+                std::wstring title;
+                title.reserve(tmp.size());
+
+                for (wchar_t c : tmp) {
+                    if (!std::iswcntrl(c)) {
+                        title.push_back(c);
+                    }
+                }
+
+                {
+                    std::lock_guard<std::mutex> lock(dialog_data.mtx);
+
+                    dialog_data.title = std::move(title);
+                }
+
+                EndDialog(hwnd, IDOK);
+                return TRUE;
+            }
+            break;
+        case WM_CLOSE:
+            EndDialog(hwnd, IDCANCEL);
+            return TRUE;
+    }
+
+    return FALSE;
+}
+
+bool SettingDialog(HWND hwnd, HINSTANCE hinst) {
+    if (hinst == nullptr) {
+        GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                          reinterpret_cast<LPCWSTR>(&SettingDialog), &hinst);
+    }
+
+    const auto result = DialogBoxParam(hinst, MAKEINTRESOURCEW(IDD_EXPORT_DIALOG), hwnd, DlgProc, NULL);
+
+    if (result != IDOK) {
+        return false;
+    }
+
+    return true;
+}
+
+constexpr bool ExportLUT(OUTPUT_INFO* ctx) {
+    constexpr DWORD format = MAKEFOURCC('H', 'F', '6', '4');
+    constexpr std::wstring_view kPlaceholder = L"${STEM}";
+
+    Eigen::Vector2i size{ctx->w, ctx->h};
 
     if ((size.array() < 8).any()) {
         Logger::Error(L"Unsupported resolution");
         return false;
     }
 
-    const auto* raw = static_cast<const RGBAF16*>(context->func_get_video(0, format));
+    const auto* raw = static_cast<const RGBAF16*>(ctx->func_get_video(0, format));
     if (raw == nullptr) {
         Logger::Error(L"Failed to get image data");
         return false;
@@ -129,12 +211,41 @@ constexpr bool ExportLUT(OUTPUT_INFO* context) {
         }
     }
 
-    auto path = std::filesystem::path(context->savefile);
-    const auto title = path.stem().wstring();
+    auto path = std::filesystem::path(ctx->savefile);
 
     if (path.extension().empty()) {
         Logger::Warning(L"File extension not specified. Appending '.cube'");
         path.replace_extension(L".cube");
+    }
+
+    const auto stem = path.stem().wstring();
+    std::wstring title;
+
+    {
+        std::lock_guard<std::mutex> lock(dialog_data.mtx);
+
+        title.reserve(dialog_data.title.size());
+
+        std::wstring_view sv{dialog_data.title};
+        size_t pos = 0;
+
+        while (pos < sv.size()) {
+            const auto st = sv.find(kPlaceholder, pos);
+
+            if (st == std::wstring_view::npos) {
+                title.append(sv.substr(pos));
+                break;
+            }
+
+            title.append(sv.substr(pos, st - pos));
+            title.append(stem);
+
+            pos = st + kPlaceholder.size();
+        }
+    }
+
+    if (!title.empty() && !std::ranges::all_of(title, [](wchar_t c) { return std::isalnum(c); })) {
+        Logger::Warning(L"Title contains characters other than alphanumeric characters");
     }
 
     try {
@@ -145,21 +256,62 @@ constexpr bool ExportLUT(OUTPUT_INFO* context) {
     }
 }
 
-constexpr const wchar_t* Metadata() { return L"TITLE: {STEM} / DOMAIN_MAX: 1.0 / DOMAIN_MIN: 0.0"; }
+constexpr const wchar_t* Metadata() {
+    std::lock_guard<std::mutex> lock(dialog_data.mtx);
+
+    dialog_data.metadata = std::format(L"TITLE: {} / DOMAIN_MAX: 1.0 / DOMAIN_MIN: 0.0", dialog_data.title);
+
+    return dialog_data.metadata.c_str();
+}
+
+constexpr bool LoadConfig(PROJECT_FILE* ctx) {
+    const auto title = ctx->get_param_string("Export::Title");
+
+    if (title == nullptr) {
+        return false;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(dialog_data.mtx);
+
+        dialog_data.title = string::ToWstring(string::AsUtf8(title));
+    }
+
+    return true;
+}
+
+constexpr bool SaveConfig(PROJECT_FILE* ctx) {
+    {
+        std::lock_guard<std::mutex> lock(dialog_data.mtx);
+
+        ctx->set_param_string("Export::Title", string::AsString(string::ToUtf8(dialog_data.title)).c_str());
+    }
+
+    return true;
+}
 
 constinit OUTPUT_PLUGIN_TABLE info = {
-    .flag = OUTPUT_PLUGIN_TABLE::FLAG_IMAGE,
+    .flag = OUTPUT_PLUGIN_TABLE::FLAG_IMAGE | OUTPUT_PLUGIN_TABLE::FLAG_PROJECT_CONFIG,
     .name = L"LUT ファイル出力",
     .filefilter = L"Cube LUT File (*.cube)\0*.cube\0Hald CLUT File (*.png)\0*.png\0\0",
-    .information = L"Export Cube LUT or Hald CLUT",
+    .information = L"LUT ファイル出力 v" VERSION L" by Korarei",
     .func_output = ExportLUT,
-    .func_config = nullptr,
+    .func_config = SettingDialog,
     .func_get_config_text = Metadata,
-    .func_load_project_config = nullptr,
-    .func_save_project_config = nullptr,
+    .func_load_project_config = LoadConfig,
+    .func_save_project_config = SaveConfig,
 };
 }  // namespace
 
 namespace lut::io::exporter {
 void Init(HOST_APP_TABLE* host) { host->register_output_plugin(&info); }
+
+void Deinit() {
+    {
+        std::lock_guard<std::mutex> lock(dialog_data.mtx);
+
+        std::wstring{}.swap(dialog_data.metadata);
+        std::wstring{}.swap(dialog_data.title);
+    }
+}
 }  // namespace lut::io::exporter

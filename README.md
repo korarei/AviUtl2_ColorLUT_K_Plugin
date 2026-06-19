@@ -12,7 +12,7 @@ AviUtl ExEdit2でLUTファイルを扱えるようにするプラグイン．
 
 フィルタ
 
-- 色調整\\ColorLUT_K: LUTファイルを用いた色調補正
+- 色調整\\ColorLUT_K: LUT ファイルを用いた色調補正
 
 メディアオブジェクト
 
@@ -20,11 +20,11 @@ AviUtl ExEdit2でLUTファイルを扱えるようにするプラグイン．
 
 ファイルドロップ
 
-- LUT フィルタをレイヤーに追加: LUTファイルをD&Dでレイヤーに追加する
+- LUT フィルタをレイヤーに追加: LUT ファイルを D&D でレイヤーに追加する
 
 ファイル出力
 
-- LUT ファイルを出力: 画像をLUTファイルとして出力する
+- LUT ファイルを出力: 画像を LUT ファイルとして出力する
 
 [ダウンロードはこちらから](https://github.com/korarei/AviUtl2_ColorLUT_K_Plugin/releases)
 
@@ -131,6 +131,10 @@ Cube LUT (`.cube`) または Hald CLUT (16bit RGB PNG `.png`) を出力する出
 3. `ファイル/ファイル出力/LUT ファイル出力`で Cube LUT または Hald CLUT としてエクスポートする．
 
 出力したCube LUTファイルのサンプルを [samples/](./samples/) に置いている．
+
+#### 設定ダイアログ
+
+- TITLE: タイトル (`${STEM}` はファイルパスのステムで置換される． Cube LUT の規格的には英数字のみが許容される．)
 
 ### LUT フィルタをレイヤーに追加
 

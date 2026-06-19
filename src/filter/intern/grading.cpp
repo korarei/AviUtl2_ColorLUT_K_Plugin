@@ -21,6 +21,10 @@
 #include <lut1d.h>
 #include <lut3d.h>
 
+#ifndef VERSION
+#define VERSION L"0.1.0"
+#endif
+
 namespace {
 namespace string = lut::string;
 
@@ -229,7 +233,7 @@ FILTER_PLUGIN_TABLE info = {
     .flag = FILTER_PLUGIN_TABLE::FLAG_VIDEO | FILTER_PLUGIN_TABLE::FLAG_FILTER,
     .name = L"ColorLUT_K",
     .label = L"色調整",
-    .information = L"ColorLUT_K applies 1D and 3D LUTs to video",
+    .information = L"ColorLUT_K v" VERSION L" by Korarei",
     .items = reinterpret_cast<void**>(props),
     .func_proc_video = Apply,
     .func_proc_audio = nullptr,

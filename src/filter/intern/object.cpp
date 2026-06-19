@@ -11,6 +11,10 @@
 
 #include <hald.h>
 
+#ifndef VERSION
+#define VERSION L"0.1.0"
+#endif
+
 namespace {
 using Logger = lut::aviutl::Logger;
 
@@ -46,7 +50,7 @@ FILTER_PLUGIN_TABLE info = {
     .flag = FILTER_PLUGIN_TABLE::FLAG_VIDEO | FILTER_PLUGIN_TABLE::FLAG_INPUT,
     .name = L"HaldCLUT_K",
     .label = L"LUT",
-    .information = L"HaldCLUT_K generates Identity Hald CLUTs",
+    .information = L"HaldCLUT_K v" VERSION L" by Korarei",
     .items = reinterpret_cast<void**>(props),
     .func_proc_video = Draw,
     .func_proc_audio = nullptr,

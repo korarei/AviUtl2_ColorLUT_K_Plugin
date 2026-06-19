@@ -43,7 +43,7 @@ description = """
 
 フィルタ
 
-- 色調整\\ColorLUT_K: LUTファイルを用いた色調補正
+- 色調整\\ColorLUT_K: LUT ファイルを用いた色調補正
 
 メディアオブジェクト
 
@@ -51,11 +51,11 @@ description = """
 
 ファイルドロップ
 
-- LUT フィルタをレイヤーに追加: LUTファイルをD&Dでレイヤーに追加する
+- LUT フィルタをレイヤーに追加: LUT ファイルを D&D でレイヤーに追加する
 
 ファイル出力
 
-- LUT ファイルを出力: 画像をLUTファイルとして出力する
+- LUT ファイルを出力: 画像を LUT ファイルとして出力する
 """
 
 [[release.contents.extensions]]

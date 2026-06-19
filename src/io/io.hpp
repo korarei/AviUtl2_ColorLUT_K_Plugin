@@ -6,4 +6,6 @@
 
 namespace lut::io {
 void Init(HOST_APP_TABLE* host);
+
+void Deinit();
 }  // namespace lut::io
