@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <cwctype>
 #include <execution>
 #include <fstream>
 #include <ranges>
