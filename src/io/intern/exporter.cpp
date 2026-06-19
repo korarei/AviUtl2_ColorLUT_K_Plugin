@@ -1,5 +1,6 @@
 #include "exporter.hpp"
 
+#include <Eigen/Core>
 #include <algorithm>
 #include <cwctype>
 #include <execution>
@@ -30,6 +31,7 @@
 
 namespace {
 namespace string = lut::string;
+namespace cube = lut::cube;
 namespace hald = lut::hald;
 
 using Logger = lut::aviutl::Logger;
@@ -109,113 +111,86 @@ constexpr bool ExportLUT(OUTPUT_INFO* ctx) {
     constexpr DWORD format = MAKEFOURCC('H', 'F', '6', '4');
     constexpr std::wstring_view kPlaceholder = L"${STEM}";
 
-    Eigen::Vector2i size{ctx->w, ctx->h};
-
-    if ((size.array() < 8).any()) {
-        Logger::Error(L"Unsupported resolution");
-        return false;
-    }
-
     const auto* raw = static_cast<const RGBAF16*>(ctx->func_get_video(0, format));
+
     if (raw == nullptr) {
         Logger::Error(L"Failed to get image data");
         return false;
     }
 
-    hald::LUT lut{};
-    lut.level = static_cast<uint32_t>(std::round(std::cbrt(static_cast<double>(size.x()))));
-    lut.size = lut.level * lut.level;
+    const auto rows = std::views::iota(0, ctx->h);
+    const Box box = std::transform_reduce(
+        std::execution::par_unseq, rows.begin(), rows.end(), Box{},
+        [](const Box& a, const Box& b) {
+            Box tmp = a;
+            return tmp.extend(b);
+        },
+        [&](int y) -> Box {
+            Box box{};
 
-    if (size.x() != size.y() || size.x() != static_cast<int>(lut.size * lut.level)) {
-        const size_t pitch = static_cast<size_t>(size.x());
-
-        const auto rows = std::views::iota(0, size.y());
-        const Box box = std::transform_reduce(
-            std::execution::par_unseq, rows.begin(), rows.end(), Box{},
-            [](const Box& a, const Box& b) {
-                Box tmp = a;
-                return tmp.extend(b);
-            },
-            [&](int y) -> Box {
-                Box box{};
-
-                const auto* row = raw + y * size.x();
-                for (int x = 0; x < size.x(); ++x) {
-                    if (const float alpha = static_cast<float>(row[x].w()); alpha > 0.999f && alpha < 1.001f) {
-                        box.extend(Eigen::Vector2i(x, y));
-                    }
+            const auto* row = raw + y * ctx->w;
+            for (int x = 0; x < ctx->w; ++x) {
+                if (const float alpha = static_cast<float>(row[x].w()); alpha > 0.999f && alpha < 1.001f) {
+                    box.extend(Eigen::Vector2i(x, y));
                 }
-
-                return box;
-            });
-
-        if (box.isEmpty()) {
-            Logger::Error(L"Unsupported resolution");
-            return false;
-        }
-
-        size = box.sizes() + Eigen::Vector2i::Ones();
-
-        if (size.x() != size.y()) {
-            Logger::Error(L"Unsupported resolution");
-            return false;
-        }
-
-        lut.level = static_cast<uint32_t>(std::round(std::cbrt(static_cast<double>(size.x()))));
-        lut.size = lut.level * lut.level;
-
-        if (size.x() != static_cast<int>(lut.size * lut.level)) {
-            Logger::Error(L"Unsupported resolution");
-            return false;
-        }
-
-        lut.data.resize(size.x() * size.y());
-
-        std::atomic_bool is_invalid = false;
-        Eigen::Vector2i origin = box.min();
-
-        const auto indices = std::views::iota(0uz, lut.data.size());
-        std::for_each(std::execution::par_unseq, indices.begin(), indices.end(), [&](size_t i) {
-            const auto x = (i % size.x()) + origin.x();
-            const auto y = (i / size.x()) + origin.y();
-            const auto& v = raw[x + y * pitch];
-
-            if (const float alpha = static_cast<float>(v.w()); alpha > 0.999f && alpha < 1.001f) {
-                lut.data[i] = v;
-            } else {
-                is_invalid.store(true, std::memory_order_relaxed);
             }
+
+            return box;
         });
 
-        if (is_invalid.load(std::memory_order_relaxed)) {
-            Logger::Error(L"Invalid image data");
-            return false;
+    if (box.isEmpty()) {
+        Logger::Error(L"Unsupported resolution");
+        return false;
+    }
+
+    Eigen::Vector2i size = box.sizes() + Eigen::Vector2i::Ones();
+
+    if (size.x() != size.y()) {
+        Logger::Error(L"Unsupported resolution");
+        return false;
+    }
+
+    hald::LUT hald{};
+    hald.level = static_cast<uint32_t>(std::round(std::cbrt(static_cast<double>(size.x()))));
+    hald.size = hald.level * hald.level;
+
+    if (size.x() != static_cast<int>(hald.size * hald.level)) {
+        Logger::Error(L"Unsupported resolution");
+        return false;
+    }
+
+    hald.data.resize(size.x() * size.y());
+
+    std::atomic_bool is_invalid = false;
+    Eigen::Vector2i origin = box.min();
+
+    const auto indices = std::views::iota(0uz, hald.data.size());
+    std::for_each(std::execution::par_unseq, indices.begin(), indices.end(), [&](size_t i) {
+        const auto x = (i % size.x()) + origin.x();
+        const auto y = (i / size.x()) + origin.y();
+        const auto& v = raw[x + y * ctx->w];
+
+        if (const float alpha = static_cast<float>(v.w()); alpha > 0.999f && alpha < 1.001f) {
+            hald.data[i] = v;
+        } else {
+            is_invalid.store(true, std::memory_order_relaxed);
         }
-    } else {
-        lut.data.resize(size.x() * size.y());
+    });
 
-        std::atomic_bool is_invalid = false;
-
-        const auto indices = std::views::iota(0uz, lut.data.size());
-        std::for_each(std::execution::par_unseq, indices.begin(), indices.end(), [&](size_t i) {
-            if (const float alpha = static_cast<float>(raw[i].w()); alpha > 0.999f && alpha < 1.001f) {
-                lut.data[i] = raw[i];
-            } else {
-                is_invalid.store(true, std::memory_order_relaxed);
-            }
-        });
-
-        if (is_invalid.load(std::memory_order_relaxed)) {
-            Logger::Error(L"Invalid image data");
-            return false;
-        }
+    if (is_invalid.load(std::memory_order_relaxed)) {
+        Logger::Error(L"Only fully opaque pixels are supported");
+        return false;
     }
 
     auto path = std::filesystem::path(ctx->savefile);
+    auto ext = path.extension().wstring();
 
-    if (path.extension().empty()) {
+    if (ext.empty()) {
         Logger::Warning(L"File extension not specified. Appending '.cube'");
         path.replace_extension(L".cube");
+        ext = L".cube";
+    } else {
+        std::ranges::for_each(ext, [](wchar_t& c) { c = std::towlower(c); });
     }
 
     const auto stem = path.stem().wstring();
@@ -244,12 +219,21 @@ constexpr bool ExportLUT(OUTPUT_INFO* ctx) {
         }
     }
 
-    if (!title.empty() && !std::ranges::all_of(title, [](wchar_t c) { return std::isalnum(c); })) {
-        Logger::Warning(L"Title contains characters other than alphanumeric characters");
-    }
-
     try {
-        return hald::Export(lut, path, title);
+        if (ext == L".png") {
+            return hald::Export(hald, path, title);
+        } else if (ext == L".cube") {
+            if (!title.empty() &&
+                std::ranges::any_of(title, [](wchar_t c) { return c == 0x22 || c < 0x20 || c > 0x7e; })) {
+                Logger::Error(L"Title contains characters other than printable ASCII characters");
+                return false;
+            }
+
+            return cube::Export(hald, path, title);
+        } else {
+            Logger::Error(L"Unsupported file extension");
+            return false;
+        }
     } catch (const std::exception& e) {
         Logger::Error(string::ToWstring(string::AsUtf8(e.what())));
         return false;

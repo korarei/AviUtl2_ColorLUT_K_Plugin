@@ -39,25 +39,31 @@ class LUTCache : private cache::Cache<std::optional<LUTData>> {
 };
 
 namespace cube {
-inline constexpr std::wstring_view kExtension = L".cube";
-
 struct LUT {
     int dimension = 0;
     uint32_t size = 0u;
     std::vector<Eigen::half> data{};
 };
-
-[[nodiscard]] std::optional<LUT> Load(const std::filesystem::path& path);
 }  // namespace cube
 
 namespace hald {
-inline constexpr std::array<std::wstring_view, 4> kExtensions = {L".png", L".bmp", L".tiff", L".tif"};
-
 struct LUT {
     uint32_t level = 0u;
     uint32_t size = 0u;
     std::vector<pixel::RGBAF16> data{};
 };
+}  // namespace hald
+
+namespace cube {
+inline constexpr std::wstring_view kExtension = L".cube";
+
+[[nodiscard]] std::optional<LUT> Load(const std::filesystem::path& path);
+[[nodiscard]] bool Export(const LUT& lut, const std::filesystem::path& path, const std::wstring& title);
+[[nodiscard]] bool Export(const hald::LUT& lut, const std::filesystem::path& path, const std::wstring& title);
+}  // namespace cube
+
+namespace hald {
+inline constexpr std::array<std::wstring_view, 4> kExtensions = {L".png", L".bmp", L".tiff", L".tif"};
 
 [[nodiscard]] std::optional<LUT> Load(const std::filesystem::path& path);
 [[nodiscard]] bool Export(const LUT& lut, const std::filesystem::path& path, const std::wstring& title);
