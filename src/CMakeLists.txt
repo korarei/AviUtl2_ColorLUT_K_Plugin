@@ -84,10 +84,16 @@ add_subdirectory(intern/lut)
 add_subdirectory(filter)
 add_subdirectory(io)
 
+include(GenerateExportHeader)
+
 add_library(${PROJECT_NAME} SHARED
     intern/resource.rc
-    main.def
     main.cpp
+)
+
+generate_export_header(${PROJECT_NAME}
+    EXPORT_MACRO_NAME API
+    EXPORT_FILE_NAME ${CMAKE_CURRENT_SOURCE_DIR}/api.h
 )
 
 target_link_libraries(${PROJECT_NAME}
