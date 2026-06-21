@@ -3,52 +3,50 @@
 #include <logger2.h>
 #include <plugin2.h>
 
-#include "filter.hpp"
-#include "io.hpp"
-#include "wic.hpp"
+#include <fx/fx.hpp>
+#include <intern/aviutl/aviutl.hpp>
+#include <intern/lut/lut.hpp>
+#include <intern/wic/wic.hpp>
+#include <io/io.hpp>
+
+#include "api.h"
 
 #ifndef VERSION
 #define VERSION L"0.1.0"
 #endif
 
-namespace {
-using namespace lut;
+#ifndef REQUIRES_AVIUTL2
+#define REQUIRES_AVIUTL2 2000100u
+#endif
 
-constinit LOG_HANDLE *logger = nullptr;
+namespace {
 constinit COMMON_PLUGIN_TABLE info = {
-        .name = L"ColorLUT_K",
-        .information = L"ColorLUT_K v" VERSION L" by Korarei",
+    .name = L"ColorLUT_K Hub",
+    .information = L"ColorLUT_K Hub v" VERSION L" by Korarei",
 };
 }  // namespace
 
 extern "C" {
-DWORD
-RequiredVersion() { return 2003700; }
+API DWORD RequiredVersion() { return REQUIRES_AVIUTL2; }
 
-void
-InitializeLogger(LOG_HANDLE *handle) {
-    logger = handle;
+API void InitializeLogger(LOG_HANDLE* logger) { lut::aviutl::Logger::Init(logger); }
+
+API bool InitializePlugin(DWORD version) { return version >= RequiredVersion(); }
+
+API void UninitializePlugin() {
+    lut::fx::Deinit();
+    lut::io::Deinit();
+
+    lut::LUTCache::Reset();
+    lut::wic::WIC::Deinit();
 }
 
-bool
-InitializePlugin(DWORD version) {
-    return version >= RequiredVersion();
-}
+API COMMON_PLUGIN_TABLE* GetCommonPluginTable() { return &info; }
 
-void
-UninitializePlugin() {
-    filter::deinit();
-    wic::WIC::release();
-}
+API void RegisterPlugin(HOST_APP_TABLE* host) {
+    lut::aviutl::Context::Init(host->create_edit_handle());
 
-COMMON_PLUGIN_TABLE *
-GetCommonPluginTable() {
-    return &info;
-};
-
-void
-RegisterPlugin(HOST_APP_TABLE *host) {
-    filter::init(host, logger);
-    io::init(host, logger);
+    lut::fx::Init(host);
+    lut::io::Init(host);
 }
 }

@@ -2,31 +2,15 @@
 
 #include <cstdint>
 
+#include <Eigen/Core>
+
 namespace lut::pixel {
-struct RGB16 {
-    uint16_t r, g, b;
-};
+using Float16 = Eigen::half;
+using RGBA16 = Eigen::Vector4<uint16_t>;
+using RGBAF16 = Eigen::Vector4<Float16>;
 
-struct RGBA16 {
-    uint16_t r, g, b, a;
-};
-
-struct RGBAF16 : RGBA16 {};
-
-struct RGBF32 {
-    float r, g, b;
-};
-
-struct RGBAF32 {
-    float r, g, b, a;
-};
-
-void
-to_rgb16(RGB16 *dst, const RGBF32 *src, size_t w, size_t h);
-
-void
-to_rgbaf32(RGBAF32 *dst, const RGBAF16 *src, size_t w, size_t h);
-
-void
-to_rgbf32(RGBF32 *dst, const RGB16 *src, size_t w, size_t h);
+static_assert(sizeof(RGBA16) == 4uz * sizeof(uint16_t));
+static_assert(sizeof(RGBAF16) == 4uz * sizeof(Float16));
+static_assert(alignof(RGBA16) == alignof(uint16_t));
+static_assert(alignof(RGBAF16) == alignof(Float16));
 }  // namespace lut::pixel

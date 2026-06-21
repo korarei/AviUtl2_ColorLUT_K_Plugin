@@ -85,7 +85,7 @@ function(compile_vertex_shaders TARGET_NAME SHADER_SOURCES)
 
     add_custom_target(${TARGET_NAME}_VertexShaders DEPENDS ${SHADER_HEADERS})
     add_dependencies(${TARGET_NAME} ${TARGET_NAME}_VertexShaders)
-    target_include_directories(${TARGET_NAME} PUBLIC "${SHADER_DESTINATION}")
+    target_include_directories(${TARGET_NAME} INTERFACE "${SHADER_DESTINATION}")
 endfunction()
 
 function(compile_compute_shaders TARGET_NAME SHADER_SOURCES)

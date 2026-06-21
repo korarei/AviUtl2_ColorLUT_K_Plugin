@@ -4,6 +4,7 @@
 
 #include <plugin2.h>
 
-namespace lut::io::importer {
+namespace lut::fx::grading {
 void Init(HOST_APP_TABLE* host);
-}  // namespace lut::io::importer
+void Deinit();
+}  // namespace lut::fx::grading

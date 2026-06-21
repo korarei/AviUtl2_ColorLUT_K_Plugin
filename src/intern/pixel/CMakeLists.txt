@@ -2,16 +2,18 @@ cmake_minimum_required(VERSION 3.20.0)
 
 project(Pixel LANGUAGES CXX)
 
-# Library definition.
-add_library(${PROJECT_NAME} STATIC
-    intern/pixel.cpp
-)
+find_package(Eigen3 CONFIG REQUIRED)
 
-# Include directories.
+add_library(${PROJECT_NAME} INTERFACE)
+
 target_include_directories(${PROJECT_NAME}
-    PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}"
+    INTERFACE
+        "${CMAKE_SOURCE_DIR}"
 )
 
-# C++ version specification.
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
+target_link_libraries(${PROJECT_NAME}
+    INTERFACE
+        Eigen3::Eigen
+)
+
+target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_23)

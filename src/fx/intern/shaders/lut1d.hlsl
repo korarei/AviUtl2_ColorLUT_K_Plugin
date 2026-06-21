@@ -10,8 +10,7 @@ cbuffer params : register(b0) {
     float seed;
 }
 
-float4
-main(float4 pos : SV_Position) : SV_Target {
+float4 main(float4 pos : SV_Position) : SV_Target {
     float2 size;
     lut.GetDimensions(size.x, size.y);
 

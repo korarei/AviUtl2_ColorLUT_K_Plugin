@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20.0)
 project(IO LANGUAGES CXX)
 
 # Library definition.
-add_library(${PROJECT_NAME} STATIC
+add_library(${PROJECT_NAME} OBJECT
     intern/io.cpp
     intern/importer.cpp
     intern/exporter.cpp
@@ -11,16 +11,15 @@ add_library(${PROJECT_NAME} STATIC
 
 # Include directories.
 target_include_directories(${PROJECT_NAME}
-    PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}"
+    PRIVATE
+        "${CMAKE_SOURCE_DIR}"
 )
 
 # Library Link.
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        LUT
-        Utilities
         AviUtl2SDK
+        LUT
 )
 
 # C++ version specification.
