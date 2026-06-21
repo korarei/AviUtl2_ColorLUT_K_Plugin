@@ -2,9 +2,7 @@ cmake_minimum_required(VERSION 3.20.0)
 
 project(Direct3D LANGUAGES CXX)
 
-add_library(${PROJECT_NAME} OBJECT
-    intern/direct3d.cpp
-)
+add_library(${PROJECT_NAME} INTERFACE)
 
 include(${CMAKE_SCRIPTS}/CompileShaders.cmake)
 set(VERTEX_SHADERS
@@ -13,14 +11,14 @@ set(VERTEX_SHADERS
 compile_vertex_shaders(${PROJECT_NAME} "${VERTEX_SHADERS}")
 
 target_include_directories(${PROJECT_NAME}
-    PRIVATE
+    INTERFACE
         "${CMAKE_SOURCE_DIR}"
 )
 
 target_link_libraries(${PROJECT_NAME}
-    PUBLIC
+    INTERFACE
         d3d11
         Pixel
 )
 
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
+target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_23)

@@ -4,18 +4,16 @@ project(Pixel LANGUAGES CXX)
 
 find_package(Eigen3 CONFIG REQUIRED)
 
-add_library(${PROJECT_NAME} OBJECT
-    intern/pixel.cpp
-)
+add_library(${PROJECT_NAME} INTERFACE)
 
 target_include_directories(${PROJECT_NAME}
-    PRIVATE
+    INTERFACE
         "${CMAKE_SOURCE_DIR}"
 )
 
 target_link_libraries(${PROJECT_NAME}
-    PUBLIC
+    INTERFACE
         Eigen3::Eigen
 )
 
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_23)
+target_compile_features(${PROJECT_NAME} INTERFACE cxx_std_23)
