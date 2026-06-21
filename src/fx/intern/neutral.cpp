@@ -173,6 +173,6 @@ FILTER_PLUGIN_TABLE info = {
 };
 }  // namespace
 
-namespace lut::filter::neutral {
+namespace lut::fx::neutral {
 void Init(HOST_APP_TABLE* host) { host->register_filter_plugin(&info); }
-}  // namespace lut::filter::neutral
+}  // namespace lut::fx::neutral

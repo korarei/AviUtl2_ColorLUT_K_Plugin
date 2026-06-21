@@ -4,7 +4,7 @@ project(Pixel LANGUAGES CXX)
 
 find_package(Eigen3 CONFIG REQUIRED)
 
-add_library(${PROJECT_NAME} STATIC
+add_library(${PROJECT_NAME} OBJECT
     intern/pixel.cpp
 )
 

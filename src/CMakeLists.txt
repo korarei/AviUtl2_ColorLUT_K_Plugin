@@ -81,7 +81,7 @@ add_subdirectory(intern/wic)
 add_subdirectory(intern/direct3d)
 add_subdirectory(intern/lut)
 
-add_subdirectory(filter)
+add_subdirectory(fx)
 add_subdirectory(io)
 
 include(GenerateExportHeader)
@@ -99,7 +99,7 @@ generate_export_header(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         AviUtl
-        Filter
+        FX
         IO
         LUT
         WIC

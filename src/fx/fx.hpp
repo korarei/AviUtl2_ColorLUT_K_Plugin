@@ -4,7 +4,7 @@
 
 #include <plugin2.h>
 
-namespace lut::filter {
+namespace lut::fx {
 void Init(HOST_APP_TABLE* host);
 void Deinit();
-}  // namespace lut::filter
+}  // namespace lut::fx

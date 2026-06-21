@@ -3,7 +3,7 @@
 #include <logger2.h>
 #include <plugin2.h>
 
-#include <filter/filter.hpp>
+#include <fx/fx.hpp>
 #include <intern/aviutl/aviutl.hpp>
 #include <intern/lut/lut.hpp>
 #include <intern/wic/wic.hpp>
@@ -34,7 +34,7 @@ API void InitializeLogger(LOG_HANDLE* logger) { lut::aviutl::Logger::Init(logger
 API bool InitializePlugin(DWORD version) { return version >= RequiredVersion(); }
 
 API void UninitializePlugin() {
-    lut::filter::Deinit();
+    lut::fx::Deinit();
     lut::io::Deinit();
 
     lut::LUTCache::Reset();
@@ -46,7 +46,7 @@ API COMMON_PLUGIN_TABLE* GetCommonPluginTable() { return &info; }
 API void RegisterPlugin(HOST_APP_TABLE* host) {
     lut::aviutl::Context::Init(host->create_edit_handle());
 
-    lut::filter::Init(host);
+    lut::fx::Init(host);
     lut::io::Init(host);
 }
 }

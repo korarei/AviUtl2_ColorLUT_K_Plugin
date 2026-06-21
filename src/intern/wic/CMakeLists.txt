@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20.0)
 
 project(WIC LANGUAGES CXX)
 
-add_library(${PROJECT_NAME} STATIC
+add_library(${PROJECT_NAME} OBJECT
     intern/wic.cpp
 )
 

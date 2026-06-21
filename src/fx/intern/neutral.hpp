@@ -4,6 +4,6 @@
 
 #include <plugin2.h>
 
-namespace lut::filter::neutral {
+namespace lut::fx::neutral {
 void Init(HOST_APP_TABLE* host);
-}  // namespace lut::filter::neutral
+}  // namespace lut::fx::neutral

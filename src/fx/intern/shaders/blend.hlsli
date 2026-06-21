@@ -1,34 +1,32 @@
-enum class BlendMode : int {
-    kNormal = 0,
-    kDissolve,
-    kDarken,
-    kMultiply,
-    kColorBurn,
-    kLinearBurn,
-    kDarkerColor,
-    kLighten,
-    kScreen,
-    kColorDodge,
-    kLinearDodge,
-    kLighterColor,
-    kOverlay,
-    kSoftLight,
-    kHardLight,
-    kLinearLight,
-    kVividLight,
-    kPinLight,
-    kHardMix,
-    kDifference,
-    kExclusion,
-    kSubtract,
-    kDivide,
-    kHue,
-    kSaturation,
-    kColor,
-    kLuminosity,
-};
-
 static const float kEpsilon = 1.0e-4f;
+
+static const int kNormal = 0;
+static const int kDissolve = 1;
+static const int kDarken = 2;
+static const int kMultiply = 3;
+static const int kColorBurn = 4;
+static const int kLinearBurn = 5;
+static const int kDarkerColor = 6;
+static const int kLighten = 7;
+static const int kScreen = 8;
+static const int kColorDodge = 9;
+static const int kLinearDodge = 10;
+static const int kLighterColor = 11;
+static const int kOverlay = 12;
+static const int kSoftLight = 13;
+static const int kHardLight = 14;
+static const int kLinearLight = 15;
+static const int kVividLight = 16;
+static const int kPinLight = 17;
+static const int kHardMix = 18;
+static const int kDifference = 19;
+static const int kExclusion = 20;
+static const int kSubtract = 21;
+static const int kDivide = 22;
+static const int kHue = 23;
+static const int kSaturation = 24;
+static const int kColor = 25;
+static const int kLuminosity = 26;
 
 /*
 The following function is a modified version of pcg4d function
@@ -190,17 +188,15 @@ inline float3 luminosity(float3 base, float3 src) {
 }
 
 float4 blend(float4 src, float4 base, int blend_mode, float opacity, float should_clamp, float4 seed) {
-    const BlendMode mode = BlendMode(blend_mode);
-
     src = saturate(src);
     base = saturate(base);
 
-    if (mode == BlendMode::kNormal) {
+    if (blend_mode == kNormal) {
         src.rgb *= src.a;
         base.rgb *= base.a;
         src *= opacity;
         return mad(1.0 - src.a, base, src);
-    } else if (mode == BlendMode::kDissolve) {
+    } else if (blend_mode == kDissolve) {
         base.rgb *= base.a;
         return lerp(base, float4(src.rgb, 1.0), step(hash(seed) + kEpsilon, src.a * opacity));
     }
@@ -209,80 +205,80 @@ float4 blend(float4 src, float4 base, int blend_mode, float opacity, float shoul
 
     float3 blended;
     [forcecase]
-    switch (mode) {
-        case BlendMode::kDarken:
+    switch (blend_mode) {
+        case kDarken:
             blended = darken(base.rgb, src.rgb);
             break;
-        case BlendMode::kMultiply:
+        case kMultiply:
             blended = multiply(base.rgb, src.rgb);
             break;
-        case BlendMode::kColorBurn:
+        case kColorBurn:
             blended = color_burn(base.rgb, src.rgb);
             break;
-        case BlendMode::kLinearBurn:
+        case kLinearBurn:
             blended = linear_burn(base.rgb, src.rgb);
             break;
-        case BlendMode::kDarkerColor:
+        case kDarkerColor:
             blended = darker_color(base.rgb, src.rgb);
             break;
-        case BlendMode::kLighten:
+        case kLighten:
             blended = lighten(base.rgb, src.rgb);
             break;
-        case BlendMode::kScreen:
+        case kScreen:
             blended = screen(base.rgb, src.rgb);
             break;
-        case BlendMode::kColorDodge:
+        case kColorDodge:
             blended = color_dodge(base.rgb, src.rgb);
             break;
-        case BlendMode::kLinearDodge:
+        case kLinearDodge:
             blended = linear_dodge(base.rgb, src.rgb);
             break;
-        case BlendMode::kLighterColor:
+        case kLighterColor:
             blended = lighter_color(base.rgb, src.rgb);
             break;
-        case BlendMode::kOverlay:
+        case kOverlay:
             blended = overlay(base.rgb, src.rgb);
             break;
-        case BlendMode::kSoftLight:
+        case kSoftLight:
             blended = soft_light(base.rgb, src.rgb);
             break;
-        case BlendMode::kHardLight:
+        case kHardLight:
             blended = hard_light(base.rgb, src.rgb);
             break;
-        case BlendMode::kLinearLight:
+        case kLinearLight:
             blended = linear_light(base.rgb, src.rgb);
             break;
-        case BlendMode::kVividLight:
+        case kVividLight:
             blended = vivid_light(base.rgb, src.rgb);
             break;
-        case BlendMode::kPinLight:
+        case kPinLight:
             blended = pin_light(base.rgb, src.rgb);
             break;
-        case BlendMode::kHardMix:
+        case kHardMix:
             blended = hard_mix(base.rgb, src.rgb);
             break;
-        case BlendMode::kDifference:
+        case kDifference:
             blended = difference(base.rgb, src.rgb);
             break;
-        case BlendMode::kExclusion:
+        case kExclusion:
             blended = exclusion(base.rgb, src.rgb);
             break;
-        case BlendMode::kSubtract:
+        case kSubtract:
             blended = subtract(base.rgb, src.rgb);
             break;
-        case BlendMode::kDivide:
+        case kDivide:
             blended = divide(base.rgb, src.rgb);
             break;
-        case BlendMode::kHue:
+        case kHue:
             blended = hue(base.rgb, src.rgb);
             break;
-        case BlendMode::kSaturation:
+        case kSaturation:
             blended = saturation(base.rgb, src.rgb);
             break;
-        case BlendMode::kColor:
+        case kColor:
             blended = color(base.rgb, src.rgb);
             break;
-        case BlendMode::kLuminosity:
+        case kLuminosity:
             blended = luminosity(base.rgb, src.rgb);
             break;
         default:

@@ -297,8 +297,8 @@ constinit FILTER_PLUGIN_TABLE info = {
 };
 }  // namespace
 
-namespace lut::filter::grading {
+namespace lut::fx::grading {
 void Init(HOST_APP_TABLE* host) { host->register_filter_plugin(&info); }
 
 void Deinit() { d3d.Release(); }
-}  // namespace lut::filter::grading
+}  // namespace lut::fx::grading

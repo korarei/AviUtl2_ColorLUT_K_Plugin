@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20.0)
 project(IO LANGUAGES CXX)
 
 # Library definition.
-add_library(${PROJECT_NAME} STATIC
+add_library(${PROJECT_NAME} OBJECT
     intern/io.cpp
     intern/importer.cpp
     intern/exporter.cpp
@@ -18,7 +18,6 @@ target_include_directories(${PROJECT_NAME}
 # Library Link.
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        uxtheme
         AviUtl2SDK
         LUT
 )

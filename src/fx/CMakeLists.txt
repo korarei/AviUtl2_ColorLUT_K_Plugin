@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.20.0)
 
-project(Filter LANGUAGES CXX)
+project(FX LANGUAGES CXX)
 
 # Library definition.
-add_library(${PROJECT_NAME} STATIC
-    intern/filter.cpp
+add_library(${PROJECT_NAME} OBJECT
+    intern/fx.cpp
     intern/grading.cpp
     intern/neutral.cpp
 )

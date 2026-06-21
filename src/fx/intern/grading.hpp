@@ -4,7 +4,7 @@
 
 #include <plugin2.h>
 
-namespace lut::filter::grading {
+namespace lut::fx::grading {
 void Init(HOST_APP_TABLE* host);
 void Deinit();
-}  // namespace lut::filter::grading
+}  // namespace lut::fx::grading
