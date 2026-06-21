@@ -2,7 +2,6 @@
 
 #include <windows.h>
 
-#include <logger2.h>
 #include <plugin2.h>
 
 namespace lut::io::importer {

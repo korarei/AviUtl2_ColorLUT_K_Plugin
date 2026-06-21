@@ -4,6 +4,7 @@
 #include <wrl/client.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <cwctype>
 #include <filesystem>
@@ -26,12 +27,16 @@
 #endif
 
 namespace {
+namespace aul = lut::aviutl;
 namespace string = lut::string;
 
 template <typename T>
 using ComPtr = Microsoft::WRL::ComPtr<T>;
-using Logger = lut::aviutl::Logger;
 using LUTCache = lut::LUTCache;
+using LUTView = lut::LUTView;
+using CubeLUT = lut::CubeLUT;
+using HaldLUT = lut::HaldLUT;
+using StripLUT = lut::StripLUT;
 using PixelShaderDesc = lut::direct3d::PixelShaderDesc;
 using Direct3D = lut::direct3d::Direct3D<1uz, 2uz>;  // 1 cache, 2 pixel shaders
 using RGBAF16 = Direct3D::RGBAF16;
@@ -43,9 +48,43 @@ struct alignas(16) Params {
     float seed;
 };
 
+enum BlendMode : int {
+    kNormal = 0,
+    kDissolve,
+    kDarken,
+    kMultiply,
+    kColorBurn,
+    kLinearBurn,
+    kDarkerColor,
+    kLighten,
+    kScreen,
+    kColorDodge,
+    kLinearDodge,
+    kLighterColor,
+    kOverlay,
+    kSoftLight,
+    kHardLight,
+    kLinearLight,
+    kVividLight,
+    kPinLight,
+    kHardMix,
+    kDifference,
+    kExclusion,
+    kSubtract,
+    kDivide,
+    kHue,
+    kSaturation,
+    kColor,
+    kLuminosity,
+};
+
+enum CacheIndex : size_t {
+    kSource = 0uz,
+};
+
 enum PixelShaderIndex : size_t {
     kLUT1D = 0uz,
-    kLUT3D = 1uz,
+    kLUT3D,
 };
 
 constexpr D3D11_SAMPLER_DESC kSampler{
@@ -66,8 +105,8 @@ Direct3D d3d({PixelShaderDesc{g_lut1d, sizeof(Params), kSampler}, PixelShaderDes
 namespace property {
 FILTER_ITEM_FILE file(L"LUT File", L"",
                       L"Cube LUT File (*.cube)\0*.cube\0"
-                      L"Hald CLUT File (*.bmp;*.png;*.tiff;*.tif)\0*.bmp;*.png;*.tiff;*.tif;\0\0");
-FILTER_ITEM_BUTTON reload(L"Reload LUT", [](EDIT_SECTION* edit) {
+                      L"Hald CLUT / Strip LUT File (*.bmp;*.png;*.tiff;*.tif)\0*.bmp;*.png;*.tiff;*.tif;\0\0");
+FILTER_ITEM_BUTTON reload_lut(L"Reload LUT", [](EDIT_SECTION* edit) {
     LUTCache::Reset(file.value);
     edit->set_cursor_layer_frame(edit->info->layer, edit->info->frame);
 });
@@ -75,58 +114,55 @@ FILTER_ITEM_BUTTON reload(L"Reload LUT", [](EDIT_SECTION* edit) {
 namespace compositing {
 FILTER_ITEM_GROUP name(L"Compositing", false);
 FILTER_ITEM_SELECT::ITEM blend_modes[] = {
-    {L"Normal", 0},
-    {L"Dissolve", 1},
-    {L"Darken", 2},
-    {L"Multiply", 3},
-    {L"Color Burn", 4},
-    {L"Linear Burn", 5},
-    {L"Darker Color", 6},
-    {L"Lighten", 7},
-    {L"Screen", 8},
-    {L"Color Dodge", 9},
-    {L"Linear Dodge (Add)", 10},
-    {L"Lighter Color", 11},
-    {L"Overlay", 12},
-    {L"Soft Light", 13},
-    {L"Hard Light", 14},
-    {L"Linear Light", 15},
-    {L"Vivid Light", 16},
-    {L"Pin Light", 17},
-    {L"Hard Mix", 18},
-    {L"Difference", 19},
-    {L"Exclusion", 20},
-    {L"Subtract", 21},
-    {L"Divide", 22},
-    {L"Hue", 23},
-    {L"Saturation", 24},
-    {L"Color", 25},
-    {L"Luminosity", 26},
+    {L"Normal", BlendMode::kNormal},
+    {L"Dissolve", BlendMode::kDissolve},
+    {L"Darken", BlendMode::kDarken},
+    {L"Multiply", BlendMode::kMultiply},
+    {L"Color Burn", BlendMode::kColorBurn},
+    {L"Linear Burn", BlendMode::kLinearBurn},
+    {L"Darker Color", BlendMode::kDarkerColor},
+    {L"Lighten", BlendMode::kLighten},
+    {L"Screen", BlendMode::kScreen},
+    {L"Color Dodge", BlendMode::kColorDodge},
+    {L"Linear Dodge (Add)", BlendMode::kLinearDodge},
+    {L"Lighter Color", BlendMode::kLighterColor},
+    {L"Overlay", BlendMode::kOverlay},
+    {L"Soft Light", BlendMode::kSoftLight},
+    {L"Hard Light", BlendMode::kHardLight},
+    {L"Linear Light", BlendMode::kLinearLight},
+    {L"Vivid Light", BlendMode::kVividLight},
+    {L"Pin Light", BlendMode::kPinLight},
+    {L"Hard Mix", BlendMode::kHardMix},
+    {L"Difference", BlendMode::kDifference},
+    {L"Exclusion", BlendMode::kExclusion},
+    {L"Subtract", BlendMode::kSubtract},
+    {L"Divide", BlendMode::kDivide},
+    {L"Hue", BlendMode::kHue},
+    {L"Saturation", BlendMode::kSaturation},
+    {L"Color", BlendMode::kColor},
+    {L"Luminosity", BlendMode::kLuminosity},
     {nullptr, -1},
 };
 FILTER_ITEM_SELECT blend_mode(L"Compositing::Blend Mode", 0, blend_modes);
 FILTER_ITEM_TRACK opacity(L"Compositing::Opacity", 100.0, 0.0, 100.0, 0.01);
-FILTER_ITEM_CHECK clamp(L"Compositing::Clamp", false);
+FILTER_ITEM_CHECK should_clamp(L"Compositing::Clamp", false);
 }  // namespace compositing
 }  // namespace property
 
 void* props[] = {
     &property::file,
-    &property::reload,
+    &property::reload_lut,
     &property::compositing::name,
     &property::compositing::blend_mode,
     &property::compositing::opacity,
-    &property::compositing::clamp,
+    &property::compositing::should_clamp,
     nullptr,
 };
 
-auto& file = property::file.value;
-auto& blend_mode = property::compositing::blend_mode.value;
-auto& opacity = property::compositing::opacity.value;
-auto& clamp = property::compositing::clamp.value;
-
 bool Apply(FILTER_PROC_VIDEO* ctx) {
-    if (file[0] == L'\0') {
+    namespace prop = property;
+
+    if (prop::file.value[0] == L'\0') {
         return true;
     }
 
@@ -137,9 +173,9 @@ bool Apply(FILTER_PROC_VIDEO* ctx) {
     }
 
     const Params params{
-        .blend_mode = blend_mode,
-        .opacity = static_cast<float>(opacity * 0.01),
-        .should_clamp = clamp ? 1.0f : 0.0f,
+        .blend_mode = prop::compositing::blend_mode.value,
+        .opacity = static_cast<float>(prop::compositing::opacity.value * 0.01),
+        .should_clamp = prop::compositing::should_clamp.value ? 1.0f : 0.0f,
         .seed = static_cast<float>(w * h),
     };
 
@@ -148,93 +184,104 @@ bool Apply(FILTER_PROC_VIDEO* ctx) {
         const auto ctrl = d3d.Init(tex, []() { LUTCache::Reset(); });
 
         const auto dst = ctrl.GetBackBuffer(tex);
-        const auto src = ctrl.CopyBuffer<0uz>(tex, w, h);
+        const auto src = ctrl.CopyBuffer<CacheIndex::kSource>(tex, w, h);
 
         {
-            const auto entry = LUTCache::Find(ctx->object->effect_id, file);
+            const auto entry = LUTCache::Find(ctx->object->effect_id, prop::file.value);
             auto& lut = *entry;
 
             if (!lut.has_value()) {
-                const std::filesystem::path path(file);
+                const std::filesystem::path path(prop::file.value);
                 auto ext = path.extension().wstring();
 
                 if (ext.empty()) {
-                    Logger::Error(L"File extension not specified");
+                    aul::Logger::Error(L"File extension not specified");
                     return false;
                 }
 
                 std::ranges::for_each(ext, [](wchar_t& c) { c = std::towlower(c); });
 
-                if (ext == lut::cube::kExtension) {
-                    const auto cube = lut::cube::Load(path);
+                auto load_lut = [&](const LUTView& view) {
+                    std::visit(
+                        [&](auto p) {
+                            using T = std::decay_t<decltype(p)>;
+
+                            if constexpr (std::is_same_v<T, LUTView::LUT3D>) {
+                                ComPtr<ID3D11Texture3D> data;
+                                ctrl.CreateTexture(&data, view.size, p.data());
+
+                                ComPtr<ID3D11ShaderResourceView> srv;
+                                ctrl.CreateShaderResourceView(&srv, data.Get());
+
+                                lut = {
+                                    .dimension = 3,
+                                    .view = std::move(srv),
+                                    .data = std::move(data),
+                                };
+                            } else if constexpr (std::is_same_v<T, LUTView::LUT1D>) {
+                                ComPtr<ID3D11Texture1D> data;
+                                ctrl.CreateTexture(&data, view.size, 3u, p.data());
+
+                                ComPtr<ID3D11ShaderResourceView> srv;
+                                ctrl.CreateShaderResourceView(&srv, data.Get());
+
+                                lut = {
+                                    .dimension = 1,
+                                    .view = std::move(srv),
+                                    .data = std::move(data),
+                                };
+                            } else {
+                                std::unreachable();
+                            }
+                        },
+                        view.data);
+                };
+
+                if (ext == lut::kExtension.cube) {
+                    const auto cube = CubeLUT::Import(path);
 
                     if (!cube.has_value()) {
-                        Logger::Error(L"Failed to load Cube LUT");
+                        aul::Logger::Error(L"Failed to load Cube LUT");
                         return false;
                     }
 
-                    switch (cube->dimension) {
-                        case 1: {
-                            ComPtr<ID3D11Texture1D> lut1d;
-                            ctrl.CreateTexture(&lut1d, cube->size, 3u, cube->data.data());
-
-                            ComPtr<ID3D11ShaderResourceView> srv;
-                            ctrl.CreateShaderResourceView(&srv, lut1d.Get());
-
-                            lut = {1, std::move(srv), std::move(lut1d)};
-                            break;
-                        }
-                        case 3: {
-                            ComPtr<ID3D11Texture3D> lut3d;
-                            ctrl.CreateTexture(&lut3d, cube->size, reinterpret_cast<const RGBAF16*>(cube->data.data()));
-
-                            ComPtr<ID3D11ShaderResourceView> srv;
-                            ctrl.CreateShaderResourceView(&srv, lut3d.Get());
-
-                            lut = {3, std::move(srv), std::move(lut3d)};
-                            break;
-                        }
-                        default:
-                            Logger::Error(L"Invalid LUT dimension");
-                            return false;
-                    }
-                } else if (std::ranges::contains(lut::hald::kExtensions, ext)) {
-                    const auto hald = lut::hald::Load(path);
+                    load_lut(cube->View());
+                } else if (std::ranges::contains(lut::kExtension.texture, ext)) {
+                    const auto hald = HaldLUT::Import(path);
 
                     if (!hald.has_value()) {
-                        Logger::Error(L"Failed to load Hald CLUT");
-                        return false;
+                        auto strip = StripLUT::Import(path);
+
+                        if (!strip.has_value()) {
+                            aul::Logger::Error(L"Failed to load LUT texture");
+                            return false;
+                        }
+
+                        load_lut(CubeLUT::Init(std::move(*strip)).View());
+                    } else {
+                        load_lut(hald->View());
                     }
-
-                    ComPtr<ID3D11Texture3D> lut3d;
-                    ctrl.CreateTexture(&lut3d, hald->size, hald->data.data());
-
-                    ComPtr<ID3D11ShaderResourceView> srv;
-                    ctrl.CreateShaderResourceView(&srv, lut3d.Get());
-
-                    lut = {3, std::move(srv), std::move(lut3d)};
                 } else {
-                    Logger::Error(L"Unsupported file format");
+                    aul::Logger::Error(L"Unsupported file format");
                     return false;
                 }
             }
 
             switch (lut->dimension) {
                 case 1:
-                    ctrl.Draw<PixelShaderIndex::kLUT1D>(&dst, w, h, {src, lut->srv.Get()}, &params);
+                    ctrl.Draw<PixelShaderIndex::kLUT1D>(&dst, w, h, {src, lut->view.Get()}, &params);
                     break;
                 case 3:
-                    ctrl.Draw<PixelShaderIndex::kLUT3D>(&dst, w, h, {src, lut->srv.Get()}, &params);
+                    ctrl.Draw<PixelShaderIndex::kLUT3D>(&dst, w, h, {src, lut->view.Get()}, &params);
                     break;
                 default:
-                    Logger::Error(L"Invalid LUT dimension");
-                    return false;
+                    std::unreachable();
             }
         }
 
         return true;
     } catch (const std::exception& e) {
-        Logger::Error(string::ToWstring(string::AsUtf8(e.what())));
+        aul::Logger::Error(string::ToWstring(string::AsUtf8(e.what())));
         return false;
     }
 }

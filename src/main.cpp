@@ -20,8 +20,6 @@
 #endif
 
 namespace {
-using namespace lut;
-
 constinit COMMON_PLUGIN_TABLE info = {
     .name = L"ColorLUT_K Hub",
     .information = L"ColorLUT_K Hub v" VERSION L" by Korarei",
@@ -46,6 +44,8 @@ API void UninitializePlugin() {
 API COMMON_PLUGIN_TABLE* GetCommonPluginTable() { return &info; }
 
 API void RegisterPlugin(HOST_APP_TABLE* host) {
+    lut::aviutl::Context::Init(host->create_edit_handle());
+
     lut::filter::Init(host);
     lut::io::Init(host);
 }

@@ -1,6 +1,5 @@
 #include "exporter.hpp"
 
-#include <Eigen/Core>
 #include <algorithm>
 #include <cwctype>
 #include <execution>
@@ -30,27 +29,55 @@
 #endif
 
 namespace {
+namespace aul = lut::aviutl;
 namespace string = lut::string;
-namespace cube = lut::cube;
-namespace hald = lut::hald;
 
-using Logger = lut::aviutl::Logger;
-using Box = Eigen::AlignedBox2i;
-using RGBAF16 = lut::pixel::RGBAF16;
+using CubeLUT = lut::CubeLUT;
+using HaldLUT = lut::HaldLUT;
+using StripLUT = lut::StripLUT;
 
 struct DialogData {
     std::mutex mtx;
-    std::wstring metadata = L"TITLE: ${STEM} / DOMAIN_MAX: 1.0 / DOMAIN_MIN: 0.0";
-    std::wstring title = L"${STEM}";
+    std::wstring metadata{};
+    std::wstring title{};
 };
 
-DialogData dialog_data{};
+constinit DialogData dialog_data{};
 
-INT_PTR CALLBACK DlgProc(HWND hwnd, UINT msg, WPARAM wp, [[maybe_unused]] LPARAM lp) {
+[[nodiscard]] std::wstring ResolveTitle(std::wstring_view input, std::wstring_view stem) {
+    constexpr std::wstring_view kTarget = L"${STEM}";
+
+    std::wstring title{};
+    title.reserve(input.size());
+
+    size_t pos = 0;
+
+    while (pos < input.size()) {
+        const auto st = input.find(kTarget, pos);
+
+        if (st == std::wstring_view::npos) {
+            title.append(input.substr(pos));
+            break;
+        }
+
+        title.append(input.substr(pos, st - pos));
+        title.append(stem);
+
+        pos = st + kTarget.size();
+    }
+
+    return title;
+}
+
+INT_PTR CALLBACK DlgProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM) {
     switch (msg) {
         case WM_INITDIALOG: {
             {
                 std::lock_guard<std::mutex> lock(dialog_data.mtx);
+
+                if (dialog_data.title.empty()) {
+                    dialog_data.title = L"${STEM}";
+                }
 
                 SetDlgItemText(hwnd, IDC_EXPORT_TITLE_EDIT, dialog_data.title.c_str());
             }
@@ -62,17 +89,10 @@ INT_PTR CALLBACK DlgProc(HWND hwnd, UINT msg, WPARAM wp, [[maybe_unused]] LPARAM
             if (LOWORD(wp) == IDOK) {
                 const int len = GetWindowTextLength(GetDlgItem(hwnd, IDC_EXPORT_TITLE_EDIT));
 
-                std::wstring tmp(len, L'\0');
-                GetDlgItemText(hwnd, IDC_EXPORT_TITLE_EDIT, tmp.data(), len + 1);
+                std::wstring title(len, L'\0');
+                GetDlgItemText(hwnd, IDC_EXPORT_TITLE_EDIT, title.data(), len + 1);
 
-                std::wstring title;
-                title.reserve(tmp.size());
-
-                for (wchar_t c : tmp) {
-                    if (!std::iswcntrl(c)) {
-                        title.push_back(c);
-                    }
-                }
+                std::erase_if(title, [](wchar_t c) { return std::iswcntrl(c); });
 
                 {
                     std::lock_guard<std::mutex> lock(dialog_data.mtx);
@@ -92,29 +112,20 @@ INT_PTR CALLBACK DlgProc(HWND hwnd, UINT msg, WPARAM wp, [[maybe_unused]] LPARAM
     return FALSE;
 }
 
-bool SettingDialog(HWND hwnd, HINSTANCE hinst) {
-    if (hinst == nullptr) {
-        GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                          reinterpret_cast<LPCWSTR>(&SettingDialog), &hinst);
-    }
-
-    const auto result = DialogBoxParam(hinst, MAKEINTRESOURCEW(IDD_EXPORT_DIALOG), hwnd, DlgProc, NULL);
-
-    if (result != IDOK) {
-        return false;
-    }
-
-    return true;
+bool ShowExportDialog(HWND hwnd, HINSTANCE hinst) {
+    return DialogBoxParam(hinst, MAKEINTRESOURCEW(IDD_EXPORT_DIALOG), hwnd, DlgProc, NULL) == IDOK;
 }
 
-constexpr bool ExportLUT(OUTPUT_INFO* ctx) {
+bool ExportLUT(OUTPUT_INFO* ctx) {
+    using Box = Eigen::AlignedBox2i;
+    using RGBAF16 = lut::pixel::RGBAF16;
+
     constexpr DWORD format = MAKEFOURCC('H', 'F', '6', '4');
-    constexpr std::wstring_view kPlaceholder = L"${STEM}";
 
     const auto* raw = static_cast<const RGBAF16*>(ctx->func_get_video(0, format));
 
     if (raw == nullptr) {
-        Logger::Error(L"Failed to get image data");
+        aul::Logger::Error(L"Failed to get image data");
         return false;
     }
 
@@ -139,54 +150,28 @@ constexpr bool ExportLUT(OUTPUT_INFO* ctx) {
         });
 
     if (box.isEmpty()) {
-        Logger::Error(L"Unsupported resolution");
+        aul::Logger::Error(L"Bounding box has no area");
         return false;
     }
 
-    Eigen::Vector2i size = box.sizes() + Eigen::Vector2i::Ones();
+    const Eigen::Vector2i size = box.sizes() + Eigen::Vector2i::Ones();
 
-    if (size.x() != size.y()) {
-        Logger::Error(L"Unsupported resolution");
-        return false;
-    }
+    std::vector<RGBAF16> data(size.x() * size.y());
 
-    hald::LUT hald{};
-    hald.level = static_cast<uint32_t>(std::round(std::cbrt(static_cast<double>(size.x()))));
-    hald.size = hald.level * hald.level;
+    const Eigen::Vector2i origin = box.min();
 
-    if (size.x() != static_cast<int>(hald.size * hald.level)) {
-        Logger::Error(L"Unsupported resolution");
-        return false;
-    }
-
-    hald.data.resize(size.x() * size.y());
-
-    std::atomic_bool is_invalid = false;
-    Eigen::Vector2i origin = box.min();
-
-    const auto indices = std::views::iota(0uz, hald.data.size());
+    const auto indices = std::views::iota(0uz, data.size());
     std::for_each(std::execution::par_unseq, indices.begin(), indices.end(), [&](size_t i) {
         const auto x = (i % size.x()) + origin.x();
         const auto y = (i / size.x()) + origin.y();
-        const auto& v = raw[x + y * ctx->w];
-
-        if (const float alpha = static_cast<float>(v.w()); alpha > 0.999f && alpha < 1.001f) {
-            hald.data[i] = v;
-        } else {
-            is_invalid.store(true, std::memory_order_relaxed);
-        }
+        data[i] = raw[x + y * ctx->w];
     });
-
-    if (is_invalid.load(std::memory_order_relaxed)) {
-        Logger::Error(L"Only fully opaque pixels are supported");
-        return false;
-    }
 
     auto path = std::filesystem::path(ctx->savefile);
     auto ext = path.extension().wstring();
 
     if (ext.empty()) {
-        Logger::Warning(L"File extension not specified. Appending '.cube'");
+        aul::Logger::Warning(L"File extension not specified. Appending '.cube'");
         path.replace_extension(L".cube");
         ext = L".cube";
     } else {
@@ -199,48 +184,91 @@ constexpr bool ExportLUT(OUTPUT_INFO* ctx) {
     {
         std::lock_guard<std::mutex> lock(dialog_data.mtx);
 
-        title.reserve(dialog_data.title.size());
-
-        std::wstring_view sv{dialog_data.title};
-        size_t pos = 0;
-
-        while (pos < sv.size()) {
-            const auto st = sv.find(kPlaceholder, pos);
-
-            if (st == std::wstring_view::npos) {
-                title.append(sv.substr(pos));
-                break;
-            }
-
-            title.append(sv.substr(pos, st - pos));
-            title.append(stem);
-
-            pos = st + kPlaceholder.size();
-        }
+        title = ResolveTitle(dialog_data.title, stem);
     }
 
     try {
-        if (ext == L".png") {
-            return hald::Export(hald, path, title);
-        } else if (ext == L".cube") {
-            if (!title.empty() &&
-                std::ranges::any_of(title, [](wchar_t c) { return c == 0x22 || c < 0x20 || c > 0x7e; })) {
-                Logger::Error(L"Title contains characters other than printable ASCII characters");
+        if (size.x() == size.y()) {
+            const uint32_t level = static_cast<uint32_t>(std::lround(std::cbrt(static_cast<double>(size.x()))));
+
+            auto lut = HaldLUT::Init(level, std::move(data));
+
+            if (!lut.has_value()) {
+                aul::Logger::Error(L"Not a valid Hald CLUT format");
                 return false;
             }
 
-            return cube::Export(hald, path, title);
+            if (ext == L".png") {
+                if (!lut->Export(path, title)) {
+                    aul::Logger::Error(L"Failed to export Hald CLUT");
+                    return false;
+                }
+
+                return true;
+            } else if (ext == L".cube") {
+                if (!title.empty() &&
+                    std::ranges::any_of(title, [](wchar_t c) { return c == 0x22 || c < 0x20 || c > 0x7e; })) {
+                    aul::Logger::Error(L"Title contains characters other than printable ASCII characters");
+                    return false;
+                }
+
+                if (!CubeLUT::Init(std::move(*lut)).Export(path, title)) {
+                    aul::Logger::Error(L"Failed to export Cube LUT");
+                    return false;
+                }
+
+                return true;
+            } else {
+                aul::Logger::Error(L"Unsupported file extension");
+                return false;
+            }
         } else {
-            Logger::Error(L"Unsupported file extension");
-            return false;
+            auto lut = StripLUT::Init(size.y(), std::move(data));
+
+            if (!lut.has_value()) {
+                aul::Logger::Error(L"Not a valid Strip LUT format");
+                return false;
+            }
+
+            if (ext == L".png") {
+                const auto hald = HaldLUT::Init(std::move(*lut));
+
+                if (!hald.has_value()) {
+                    aul::Logger::Error(L"Not a valid Hald CLUT format");
+                    return false;
+                }
+
+                if (!hald->Export(path, title)) {
+                    aul::Logger::Error(L"Failed to export Hald CLUT");
+                    return false;
+                }
+
+                return true;
+            } else if (ext == L".cube") {
+                if (!title.empty() &&
+                    std::ranges::any_of(title, [](wchar_t c) { return c == 0x22 || c < 0x20 || c > 0x7e; })) {
+                    aul::Logger::Error(L"Title contains characters other than printable ASCII characters");
+                    return false;
+                }
+
+                if (!CubeLUT::Init(std::move(*lut)).Export(path, title)) {
+                    aul::Logger::Error(L"Failed to export Cube LUT");
+                    return false;
+                }
+
+                return true;
+            } else {
+                aul::Logger::Error(L"Unsupported file extension");
+                return false;
+            }
         }
     } catch (const std::exception& e) {
-        Logger::Error(string::ToWstring(string::AsUtf8(e.what())));
+        aul::Logger::Error(string::ToWstring(string::AsUtf8(e.what())));
         return false;
     }
 }
 
-constexpr const wchar_t* Metadata() {
+const wchar_t* Metadata() {
     std::lock_guard<std::mutex> lock(dialog_data.mtx);
 
     dialog_data.metadata = std::format(L"TITLE: {} / DOMAIN_MAX: 1.0 / DOMAIN_MIN: 0.0", dialog_data.title);
@@ -248,7 +276,7 @@ constexpr const wchar_t* Metadata() {
     return dialog_data.metadata.c_str();
 }
 
-constexpr bool LoadConfig(PROJECT_FILE* ctx) {
+bool LoadConfig(PROJECT_FILE* ctx) {
     const auto title = ctx->get_param_string("Export::Title");
 
     if (title == nullptr) {
@@ -264,7 +292,7 @@ constexpr bool LoadConfig(PROJECT_FILE* ctx) {
     return true;
 }
 
-constexpr bool SaveConfig(PROJECT_FILE* ctx) {
+bool SaveConfig(PROJECT_FILE* ctx) {
     {
         std::lock_guard<std::mutex> lock(dialog_data.mtx);
 
@@ -280,7 +308,7 @@ constinit OUTPUT_PLUGIN_TABLE info = {
     .filefilter = L"Cube LUT File (*.cube)\0*.cube\0Hald CLUT File (*.png)\0*.png\0\0",
     .information = L"LUT ファイル出力 v" VERSION L" by Korarei",
     .func_output = ExportLUT,
-    .func_config = SettingDialog,
+    .func_config = ShowExportDialog,
     .func_get_config_text = Metadata,
     .func_load_project_config = LoadConfig,
     .func_save_project_config = SaveConfig,

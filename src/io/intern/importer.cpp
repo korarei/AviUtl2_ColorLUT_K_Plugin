@@ -10,24 +10,23 @@
 #include <intern/string.hpp>
 
 namespace {
+namespace aul = lut::aviutl;
 namespace string = lut::string;
 
-using Logger = lut::aviutl::Logger;
-
-constexpr void OnDrop(EDIT_SECTION* edit, const wchar_t* file) {
+void OnDrop(EDIT_SECTION* edit, const wchar_t* file) {
     std::filesystem::path path(file);
 
     auto ext = path.extension().wstring();
 
     if (ext.empty()) {
-        Logger::Error(L"File extension not specified");
+        aul::Logger::Error(L"File extension not specified");
         return;
     }
 
     std::ranges::for_each(ext, [](wchar_t& c) { c = std::towlower(c); });
 
-    if (ext != lut::cube::kExtension && !std::ranges::contains(lut::hald::kExtensions, ext)) {
-        Logger::Error(L"Unsupported file format");
+    if (ext != lut::kExtension.cube && !std::ranges::contains(lut::kExtension.texture, ext)) {
+        aul::Logger::Error(L"Unsupported file format");
         return;
     }
 
@@ -52,9 +51,9 @@ constexpr void OnDrop(EDIT_SECTION* edit, const wchar_t* file) {
 
     if (auto handle = edit->create_object_from_alias(alias.c_str(), layer, frame, 0)) {
         edit->set_focus_object(handle);
-        Logger::Info(std::format(L"Created filter object: Layer = {}, Frame = {}", layer, frame));
+        aul::Logger::Info(std::format(L"Created filter object: Layer = {}, Frame = {}", layer, frame));
     } else {
-        Logger::Error(L"Failed to create filter object");
+        aul::Logger::Error(L"Failed to create filter object");
     }
 }
 }  // namespace

@@ -5,6 +5,7 @@
 #include <string>
 
 #include <logger2.h>
+#include <plugin2.h>
 
 namespace lut::aviutl {
 class Logger {
@@ -29,5 +30,25 @@ class Logger {
     [[nodiscard]] static Logger& Instance();
 
     LOG_HANDLE* logger_ = nullptr;
+};
+
+class Context {
+  public:
+    Context(const Context&) = delete;
+    Context& operator=(const Context&) = delete;
+    Context(Context&&) = delete;
+    Context& operator=(Context&&) = delete;
+
+    static void Init(EDIT_HANDLE* context);
+
+    [[nodiscard]] static const EDIT_HANDLE* handle();
+
+  private:
+    constexpr Context() = default;
+    constexpr ~Context() = default;
+
+    [[nodiscard]] static Context& Instance();
+
+    EDIT_HANDLE* context_ = nullptr;
 };
 }  // namespace lut::aviutl

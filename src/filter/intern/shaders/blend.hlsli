@@ -1,4 +1,34 @@
-static const float eps = 1.0e-4;
+enum class BlendMode : int {
+    kNormal = 0,
+    kDissolve,
+    kDarken,
+    kMultiply,
+    kColorBurn,
+    kLinearBurn,
+    kDarkerColor,
+    kLighten,
+    kScreen,
+    kColorDodge,
+    kLinearDodge,
+    kLighterColor,
+    kOverlay,
+    kSoftLight,
+    kHardLight,
+    kLinearLight,
+    kVividLight,
+    kPinLight,
+    kHardMix,
+    kDifference,
+    kExclusion,
+    kSubtract,
+    kDivide,
+    kHue,
+    kSaturation,
+    kColor,
+    kLuminosity,
+};
+
+static const float kEpsilon = 1.0e-4f;
 
 /*
 The following function is a modified version of pcg4d function
@@ -33,7 +63,7 @@ float3 rgb2hsy(float3 c) {
     const float4 p = lerp(float4(c.bg, k.wz), float4(c.gb, k.xy), step(c.b, c.g));
     const float4 q = lerp(float4(p.xyw, c.r), float4(c.r, p.yzx), step(p.x, c.r));
     const float s = q.x - min(q.w, q.y);
-    const float h = abs(mad(q.w - q.y, rcp(max(6.0 * s, eps)), q.z));
+    const float h = abs(mad(q.w - q.y, rcp(max(6.0 * s, kEpsilon)), q.z));
     const float y = dot(c, float3(0.3, 0.59, 0.11));
     return float3(h, s, y);
 }
@@ -46,8 +76,8 @@ float3 hsy2rgb(float3 c) {
     const float l = dot(c, float3(0.3, 0.59, 0.11));
     const float n = min(min(c.r, c.g), c.b);
     const float x = max(max(c.r, c.g), c.b);
-    c = mad(c - l, min(1.0, l * rcp(max(l - n, eps))), l);
-    return mad(c - l, min(1.0, (1.0 - l) * rcp(max(x - l, eps))), l);
+    c = mad(c - l, min(1.0, l * rcp(max(l - n, kEpsilon))), l);
+    return mad(c - l, min(1.0, (1.0 - l) * rcp(max(x - l, kEpsilon))), l);
 }
 
 inline float3 darken(float3 base, float3 src) {
@@ -59,7 +89,7 @@ inline float3 multiply(float3 base, float3 src) {
 }
 
 inline float3 color_burn(float3 base, float3 src) {
-    return lerp(saturate(mad(base - 1.0, rcp(max(src, eps)), 1.0)), 0.0, step(src, 0.0));
+    return lerp(saturate(mad(base - 1.0, rcp(max(src, kEpsilon)), 1.0)), 0.0, step(src, 0.0));
 }
 
 inline float3 linear_burn(float3 base, float3 src) {
@@ -79,7 +109,7 @@ inline float3 screen(float3 base, float3 src) {
 }
 
 inline float3 color_dodge(float3 base, float3 src) {
-    return lerp(lerp(min(base * rcp(max(1.0 - src, eps)), 1.0), 1.0, step(1.0, src)), 0.0, step(abs(base), eps));
+    return lerp(lerp(min(base * rcp(max(1.0 - src, kEpsilon)), 1.0), 1.0, step(1.0, src)), 0.0, step(abs(base), kEpsilon));
 }
 
 inline float3 linear_dodge(float3 base, float3 src) {
@@ -140,7 +170,7 @@ inline float3 subtract(float3 base, float3 src) {
 }
 
 inline float3 divide(float3 base, float3 src) {
-    return base * rcp(max(abs(src), eps) * mad(2.0, step(0.0, src), -1.0));
+    return base * rcp(max(abs(src), kEpsilon) * mad(2.0, step(0.0, src), -1.0));
 }
 
 inline float3 hue(float3 base, float3 src) {
@@ -160,97 +190,99 @@ inline float3 luminosity(float3 base, float3 src) {
 }
 
 float4 blend(float4 src, float4 base, int blend_mode, float opacity, float should_clamp, float4 seed) {
+    const BlendMode mode = BlendMode(blend_mode);
+
     src = saturate(src);
     base = saturate(base);
 
-    if (blend_mode == 0) {
+    if (mode == BlendMode::kNormal) {
         src.rgb *= src.a;
         base.rgb *= base.a;
         src *= opacity;
         return mad(1.0 - src.a, base, src);
-    } else if (blend_mode == 1) {
+    } else if (mode == BlendMode::kDissolve) {
         base.rgb *= base.a;
-        return lerp(base, float4(src.rgb, 1.0), step(hash(seed) + eps, src.a * opacity));
+        return lerp(base, float4(src.rgb, 1.0), step(hash(seed) + kEpsilon, src.a * opacity));
     }
 
     src.a *= opacity;
 
     float3 blended;
     [forcecase]
-    switch (blend_mode) {
-        case 2:
+    switch (mode) {
+        case BlendMode::kDarken:
             blended = darken(base.rgb, src.rgb);
             break;
-        case 3:
+        case BlendMode::kMultiply:
             blended = multiply(base.rgb, src.rgb);
             break;
-        case 4:
+        case BlendMode::kColorBurn:
             blended = color_burn(base.rgb, src.rgb);
             break;
-        case 5:
+        case BlendMode::kLinearBurn:
             blended = linear_burn(base.rgb, src.rgb);
             break;
-        case 6:
+        case BlendMode::kDarkerColor:
             blended = darker_color(base.rgb, src.rgb);
             break;
-        case 7:
+        case BlendMode::kLighten:
             blended = lighten(base.rgb, src.rgb);
             break;
-        case 8:
+        case BlendMode::kScreen:
             blended = screen(base.rgb, src.rgb);
             break;
-        case 9:
+        case BlendMode::kColorDodge:
             blended = color_dodge(base.rgb, src.rgb);
             break;
-        case 10:
+        case BlendMode::kLinearDodge:
             blended = linear_dodge(base.rgb, src.rgb);
             break;
-        case 11:
+        case BlendMode::kLighterColor:
             blended = lighter_color(base.rgb, src.rgb);
             break;
-        case 12:
+        case BlendMode::kOverlay:
             blended = overlay(base.rgb, src.rgb);
             break;
-        case 13:
+        case BlendMode::kSoftLight:
             blended = soft_light(base.rgb, src.rgb);
             break;
-        case 14:
+        case BlendMode::kHardLight:
             blended = hard_light(base.rgb, src.rgb);
             break;
-        case 15:
+        case BlendMode::kLinearLight:
             blended = linear_light(base.rgb, src.rgb);
             break;
-        case 16:
+        case BlendMode::kVividLight:
             blended = vivid_light(base.rgb, src.rgb);
             break;
-        case 17:
+        case BlendMode::kPinLight:
             blended = pin_light(base.rgb, src.rgb);
             break;
-        case 18:
+        case BlendMode::kHardMix:
             blended = hard_mix(base.rgb, src.rgb);
             break;
-        case 19:
+        case BlendMode::kDifference:
             blended = difference(base.rgb, src.rgb);
             break;
-        case 20:
+        case BlendMode::kExclusion:
             blended = exclusion(base.rgb, src.rgb);
             break;
-        case 21:
+        case BlendMode::kSubtract:
             blended = subtract(base.rgb, src.rgb);
             break;
-        case 22:
+        case BlendMode::kDivide:
             blended = divide(base.rgb, src.rgb);
             break;
-        case 23:
+        case BlendMode::kHue:
             blended = hue(base.rgb, src.rgb);
             break;
-        case 24:
+        case BlendMode::kSaturation:
             blended = saturation(base.rgb, src.rgb);
             break;
-        case 25:
+        case BlendMode::kColor:
             blended = color(base.rgb, src.rgb);
             break;
-        case 26:
+        case BlendMode::kLuminosity:
             blended = luminosity(base.rgb, src.rgb);
             break;
         default:

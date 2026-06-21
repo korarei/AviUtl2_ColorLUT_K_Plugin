@@ -8,27 +8,27 @@
 #include <unordered_map>
 
 namespace lut::cache {
-template <typename T, typename Name = std::wstring>
+template <typename T>
 class Cache {
   public:
     struct Entry {
         std::mutex mtx;
-        Name name;
+        std::wstring name;
         T cache;
 
-        constexpr explicit Entry(const Name& n) : name(n) {}
+        explicit Entry(const std::wstring& n) : name(n) {}
     };
 
     class LockedEntry {
       public:
-        explicit LockedEntry(std::shared_ptr<Entry> e) : entry(std::move(e)), lock(entry->mtx) {}
+        explicit LockedEntry(std::shared_ptr<Entry> e) : entry_(std::move(e)), lock_(entry_->mtx) {}
 
-        [[nodiscard]] constexpr T* operator->() const noexcept { return &entry->cache; }
-        [[nodiscard]] constexpr T& operator*() const noexcept { return entry->cache; }
+        [[nodiscard]] T* operator->() const noexcept { return &entry_->cache; }
+        [[nodiscard]] T& operator*() const noexcept { return entry_->cache; }
 
       private:
-        std::shared_ptr<Entry> entry;
-        std::unique_lock<std::mutex> lock;
+        std::shared_ptr<Entry> entry_;
+        std::unique_lock<std::mutex> lock_;
     };
 
     Cache(const Cache&) = delete;
@@ -36,73 +36,80 @@ class Cache {
     Cache(Cache&&) = delete;
     Cache& operator=(Cache&&) = delete;
 
-    constexpr Cache() = default;
-    constexpr ~Cache() = default;
+    Cache() = default;
+    ~Cache() = default;
 
-    [[nodiscard]] LockedEntry Fetch(int64_t id, const Name& name) {
+    [[nodiscard]] LockedEntry Fetch(int64_t id, const std::wstring& name) {
         {
-            std::shared_lock lock(mtx);
-            if (auto it = id_to_cache.find(id); it != id_to_cache.end()) {
-                if (auto entry = it->second; entry != nullptr && entry->name == name)
+            std::shared_lock lock(mtx_);
+            if (auto it = id_to_cache_.find(id); it != id_to_cache_.end()) {
+                if (auto entry = it->second; entry != nullptr && entry->name == name) {
                     return LockedEntry{std::move(entry)};
+                }
             }
         }
 
-        std::unique_lock lock(mtx);
-        if (auto it = id_to_cache.find(id); it != id_to_cache.end()) {
-            if (auto entry = it->second; entry != nullptr && entry->name == name) return LockedEntry{std::move(entry)};
+        std::unique_lock lock(mtx_);
+        if (auto it = id_to_cache_.find(id); it != id_to_cache_.end()) {
+            if (auto entry = it->second; entry != nullptr && entry->name == name) {
+                return LockedEntry{std::move(entry)};
+            }
 
             Release(id);
         }
 
         std::shared_ptr<Entry> entry;
-        if (auto it = name_to_cache.find(name); it != name_to_cache.end()) {
+        if (auto it = name_to_cache_.find(name); it != name_to_cache_.end()) {
             entry = it->second.lock();
-            if (entry == nullptr) name_to_cache.erase(it);
+            if (entry == nullptr) {
+                name_to_cache_.erase(it);
+            }
         }
 
         if (entry == nullptr) {
             entry = std::make_shared<Entry>(name);
-            name_to_cache[name] = entry;
+            name_to_cache_[name] = entry;
         }
 
-        return LockedEntry{id_to_cache[id] = std::move(entry)};
+        return LockedEntry{id_to_cache_[id] = std::move(entry)};
     }
 
-    constexpr void Reset(int64_t id) {
-        std::unique_lock lock(mtx);
+    void Reset(int64_t id) {
+        std::unique_lock lock(mtx_);
         Release(id);
     }
 
-    constexpr void Reset(const Name& name) {
-        std::unique_lock lock(mtx);
+    void Reset(const std::wstring& name) {
+        std::unique_lock lock(mtx_);
         Release(name);
     }
 
-    constexpr void Reset() {
-        std::unique_lock lock(mtx);
-        std::unordered_map<Name, std::weak_ptr<Entry>>{}.swap(name_to_cache);
-        std::unordered_map<int64_t, std::shared_ptr<Entry>>{}.swap(id_to_cache);
+    void Reset() {
+        std::unique_lock lock(mtx_);
+        std::unordered_map<std::wstring, std::weak_ptr<Entry>>{}.swap(name_to_cache_);
+        std::unordered_map<int64_t, std::shared_ptr<Entry>>{}.swap(id_to_cache_);
     }
 
   private:
-    std::shared_mutex mtx;
-    std::unordered_map<Name, std::weak_ptr<Entry>> name_to_cache;
-    std::unordered_map<int64_t, std::shared_ptr<Entry>> id_to_cache;
+    std::shared_mutex mtx_;
+    std::unordered_map<std::wstring, std::weak_ptr<Entry>> name_to_cache_;
+    std::unordered_map<int64_t, std::shared_ptr<Entry>> id_to_cache_;
 
-    constexpr void Release(int64_t id) {
-        if (auto node = id_to_cache.extract(id)) {
+    void Release(int64_t id) {
+        if (auto node = id_to_cache_.extract(id)) {
             const auto& entry = node.mapped();
             if (entry != nullptr) {
-                if (auto it = name_to_cache.find(entry->name); it != name_to_cache.end() && it->second.expired())
-                    name_to_cache.erase(it);
+                if (auto it = name_to_cache_.find(entry->name); it != name_to_cache_.end() && it->second.expired()) {
+                    name_to_cache_.erase(it);
+                }
             }
         }
     }
 
-    constexpr void Release(const Name& name) {
-        if (auto node = name_to_cache.extract(name))
-            std::erase_if(id_to_cache, [&](const auto& e) { return e.second != nullptr && e.second->name == name; });
+    void Release(const std::wstring& name) {
+        if (auto node = name_to_cache_.extract(name)) {
+            std::erase_if(id_to_cache_, [&](const auto& e) { return e.second != nullptr && e.second->name == name; });
+        }
     }
 };
 }  // namespace lut::cache

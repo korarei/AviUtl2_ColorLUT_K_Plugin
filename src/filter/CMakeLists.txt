@@ -6,7 +6,7 @@ project(Filter LANGUAGES CXX)
 add_library(${PROJECT_NAME} STATIC
     intern/filter.cpp
     intern/grading.cpp
-    intern/object.cpp
+    intern/neutral.cpp
 )
 
 # Shader compilation.
@@ -15,6 +15,7 @@ set(SHADERS
     "${CMAKE_CURRENT_SOURCE_DIR}/intern/shaders/lut1d.hlsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/intern/shaders/lut3d.hlsl"
     "${CMAKE_CURRENT_SOURCE_DIR}/intern/shaders/hald.hlsl"
+    "${CMAKE_CURRENT_SOURCE_DIR}/intern/shaders/strip.hlsl"
 )
 compile_pixel_shaders(${PROJECT_NAME} "${SHADERS}")
 

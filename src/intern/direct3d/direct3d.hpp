@@ -15,15 +15,15 @@
 
 namespace lut::direct3d {
 struct PixelShaderDesc {
-    std::span<const BYTE> ps{};
-    size_t cb = 0uz;
-    std::optional<D3D11_SAMPLER_DESC> smp = std::nullopt;
+    std::span<const BYTE> shader{};
+    size_t cbuffer = 0uz;
+    std::optional<D3D11_SAMPLER_DESC> sampler = std::nullopt;
 };
 
 template <size_t NumCaches, size_t NumPixelShaders>
 class Direct3D {
   public:
-    using Float16 = Eigen::half;
+    using Float16 = pixel::Float16;
     using RGBAF16 = pixel::RGBAF16;
     using Tex1D = ID3D11Texture1D;
     using Tex2D = ID3D11Texture2D;
@@ -168,8 +168,8 @@ class Direct3D {
 
             const auto& ps = owner_.ps_[Index];
 
-            if (data != nullptr && ps.desc.cb > 0uz) {
-                if (ps.desc.cb != sizeof(T)) {
+            if (data != nullptr && ps.desc.cbuffer > 0uz) {
+                if (ps.desc.cbuffer != sizeof(T)) {
                     throw std::runtime_error("Constant buffer size mismatch");
                 }
 
@@ -273,19 +273,19 @@ class Direct3D {
             };
 
             for (auto& [desc, binding] : ps_) {
-                if (desc.ps.empty()) {
+                if (desc.shader.empty()) {
                     Release();
                     throw std::runtime_error("Failed to create pixel shader");
                 }
 
-                hr = device_->CreatePixelShader(desc.ps.data(), desc.ps.size_bytes(), nullptr, &binding.ps);
+                hr = device_->CreatePixelShader(desc.shader.data(), desc.shader.size(), nullptr, &binding.ps);
                 if (FAILED(hr)) {
                     Release();
                     throw std::runtime_error("Failed to create pixel shader");
                 }
 
-                if (desc.cb > 0uz) {
-                    cb_desc.ByteWidth = static_cast<uint32_t>(desc.cb);
+                if (desc.cbuffer > 0uz) {
+                    cb_desc.ByteWidth = static_cast<uint32_t>(desc.cbuffer);
                     hr = device_->CreateBuffer(&cb_desc, nullptr, &binding.cb);
                     if (FAILED(hr)) {
                         Release();
@@ -293,8 +293,8 @@ class Direct3D {
                     }
                 }
 
-                if (desc.smp.has_value()) {
-                    hr = device_->CreateSamplerState(&(*desc.smp), &binding.smp);
+                if (desc.sampler.has_value()) {
+                    hr = device_->CreateSamplerState(&(*desc.sampler), &binding.smp);
                     if (FAILED(hr)) {
                         Release();
                         throw std::runtime_error("Failed to create sampler state");

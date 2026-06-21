@@ -1,7 +1,6 @@
 #include "../aviutl.hpp"
 
 namespace lut::aviutl {
-
 void Logger::Init(LOG_HANDLE* logger) { Instance().logger_ = logger; }
 
 void Logger::Log(const std::wstring& message) {
@@ -46,6 +45,15 @@ void Logger::Error(const std::wstring& message) {
 
 Logger& Logger::Instance() {
     static Logger inst;
+    return inst;
+}
+
+void Context::Init(EDIT_HANDLE* context) { Instance().context_ = context; }
+
+const EDIT_HANDLE* Context::handle() { return Instance().context_; }
+
+Context& Context::Instance() {
+    static Context inst;
     return inst;
 }
 }  // namespace lut::aviutl
