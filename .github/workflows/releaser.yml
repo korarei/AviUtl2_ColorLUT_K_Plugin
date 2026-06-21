@@ -53,7 +53,7 @@ jobs:
     - name: Setup vcpkg
       uses: lukka/run-vcpkg@v11
       with:
-        vcpkgDirectory: plugins/extern/vcpkg
+        vcpkgDirectory: src/extern/vcpkg
 
     - name: Setup Python
       uses: actions/setup-python@v6
