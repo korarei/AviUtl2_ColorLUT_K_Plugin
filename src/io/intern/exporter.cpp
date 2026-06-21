@@ -191,15 +191,15 @@ bool ExportLUT(OUTPUT_INFO* ctx) {
         if (size.x() == size.y()) {
             const uint32_t level = static_cast<uint32_t>(std::lround(std::cbrt(static_cast<double>(size.x()))));
 
-            auto lut = HaldLUT::Init(level, std::move(data));
+            const auto hald = HaldLUT::Init(level, std::move(data));
 
-            if (!lut.has_value()) {
+            if (!hald.has_value()) {
                 aul::Logger::Error(L"Not a valid Hald CLUT format");
                 return false;
             }
 
             if (ext == L".png") {
-                if (!lut->Export(path, title)) {
+                if (!hald->Export(path, title)) {
                     aul::Logger::Error(L"Failed to export Hald CLUT");
                     return false;
                 }
@@ -212,7 +212,7 @@ bool ExportLUT(OUTPUT_INFO* ctx) {
                     return false;
                 }
 
-                if (!CubeLUT::Init(std::move(*lut)).Export(path, title)) {
+                if (!CubeLUT::Init(*hald).Export(path, title)) {
                     aul::Logger::Error(L"Failed to export Cube LUT");
                     return false;
                 }
@@ -223,15 +223,15 @@ bool ExportLUT(OUTPUT_INFO* ctx) {
                 return false;
             }
         } else {
-            auto lut = StripLUT::Init(size.y(), std::move(data));
+            const auto strip = StripLUT::Init(size.y(), std::move(data));
 
-            if (!lut.has_value()) {
+            if (!strip.has_value()) {
                 aul::Logger::Error(L"Not a valid Strip LUT format");
                 return false;
             }
 
             if (ext == L".png") {
-                const auto hald = HaldLUT::Init(std::move(*lut));
+                const auto hald = HaldLUT::Init(*strip);
 
                 if (!hald.has_value()) {
                     aul::Logger::Error(L"Not a valid Hald CLUT format");
@@ -251,7 +251,7 @@ bool ExportLUT(OUTPUT_INFO* ctx) {
                     return false;
                 }
 
-                if (!CubeLUT::Init(std::move(*lut)).Export(path, title)) {
+                if (!CubeLUT::Init(*strip).Export(path, title)) {
                     aul::Logger::Error(L"Failed to export Cube LUT");
                     return false;
                 }

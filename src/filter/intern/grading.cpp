@@ -250,14 +250,14 @@ bool Apply(FILTER_PROC_VIDEO* ctx) {
                     const auto hald = HaldLUT::Import(path);
 
                     if (!hald.has_value()) {
-                        auto strip = StripLUT::Import(path);
+                        const auto strip = StripLUT::Import(path);
 
                         if (!strip.has_value()) {
                             aul::Logger::Error(L"Failed to load LUT texture");
                             return false;
                         }
 
-                        load_lut(CubeLUT::Init(std::move(*strip)).View());
+                        load_lut(CubeLUT::Init(*strip).View());
                     } else {
                         load_lut(hald->View());
                     }

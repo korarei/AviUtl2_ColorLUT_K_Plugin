@@ -261,13 +261,13 @@ std::optional<CubeLUT> CubeLUT::Init(int dimension, uint32_t size, std::vector<F
     return CubeLUT(dimension, size, std::move(data));
 }
 
-CubeLUT CubeLUT::Init(HaldLUT&& lut) {
+CubeLUT CubeLUT::Init(const HaldLUT& lut) {
     std::vector<Float16> data(lut.data_.size() * 4uz);
     std::memcpy(data.data(), lut.data_.data(), data.size() * sizeof(Float16));
     return CubeLUT(3, lut.size_, std::move(data));
 }
 
-CubeLUT CubeLUT::Init(StripLUT&& lut) {
+CubeLUT CubeLUT::Init(const StripLUT& lut) {
     std::vector<Float16> data(lut.data_.size() * 4uz);
 
     const auto indices = std::views::iota(0uz, lut.data_.size());
@@ -596,7 +596,7 @@ std::optional<HaldLUT> HaldLUT::Init(uint32_t level, std::vector<RGBAF16>&& data
     return HaldLUT(size, w, std::move(data));
 }
 
-std::optional<HaldLUT> HaldLUT::Init(StripLUT&& lut) {
+std::optional<HaldLUT> HaldLUT::Init(const StripLUT& lut) {
     const uint32_t level = static_cast<uint32_t>(std::lround(std::sqrt(static_cast<double>(lut.size_))));
 
     if (level * level != lut.size_) {
@@ -672,7 +672,7 @@ std::optional<StripLUT> StripLUT::Init(uint32_t size, std::vector<RGBAF16>&& dat
     return StripLUT(size, size * size, size, std::move(data));
 }
 
-StripLUT StripLUT::Init(HaldLUT&& lut) {
+StripLUT StripLUT::Init(const HaldLUT& lut) {
     const uint32_t w = lut.size_ * lut.size_, h = lut.size_;
 
     std::vector<RGBAF16> data(lut.data_.size());

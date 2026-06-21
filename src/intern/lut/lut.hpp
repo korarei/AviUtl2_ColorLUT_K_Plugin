@@ -91,8 +91,8 @@ class CubeLUT {
     ~CubeLUT() = default;
 
     [[nodiscard]] static std::optional<CubeLUT> Init(int dimension, uint32_t size, std::vector<pixel::Float16>&& data);
-    [[nodiscard]] static CubeLUT Init(HaldLUT&& lut);
-    [[nodiscard]] static CubeLUT Init(StripLUT&& lut);
+    [[nodiscard]] static CubeLUT Init(const HaldLUT& lut);
+    [[nodiscard]] static CubeLUT Init(const StripLUT& lut);
     [[nodiscard]] static std::optional<CubeLUT> Import(const std::filesystem::path& path);
 
     [[nodiscard]] LUTView View() const;
@@ -116,7 +116,7 @@ class HaldLUT : public TexLUT {
     ~HaldLUT() = default;
 
     [[nodiscard]] static std::optional<HaldLUT> Init(uint32_t level, std::vector<pixel::RGBAF16>&& data);
-    [[nodiscard]] static std::optional<HaldLUT> Init(StripLUT&& lut);
+    [[nodiscard]] static std::optional<HaldLUT> Init(const StripLUT& lut);
     [[nodiscard]] static std::optional<HaldLUT> Import(const std::filesystem::path& path);
 
     [[nodiscard]] LUTView View() const;
@@ -141,7 +141,7 @@ class StripLUT : public TexLUT {
     ~StripLUT() = default;
 
     [[nodiscard]] static std::optional<StripLUT> Init(uint32_t size, std::vector<pixel::RGBAF16>&& data);
-    [[nodiscard]] static StripLUT Init(HaldLUT&& lut);
+    [[nodiscard]] static StripLUT Init(const HaldLUT& lut);
     [[nodiscard]] static std::optional<StripLUT> Import(const std::filesystem::path& path);
 
     [[nodiscard]] bool Export(const std::filesystem::path& path, const std::wstring& title) const;
