@@ -13,10 +13,7 @@ AviUtl ExEdit2でLUTファイルを扱えるようにするプラグイン．
 フィルタ
 
 - 色調整\\ColorLUT_K: LUT ファイルを用いた色調補正
-
-メディアオブジェクト
-
-- LUT\\HaldCLUT_K: Hald CLUT (画像形式のLUT)
+- 加工\\NeutralLUT_K: Neutral LUT (identity transform) を描画する
 
 ファイルドロップ
 
@@ -30,10 +27,10 @@ AviUtl ExEdit2でLUTファイルを扱えるようにするプラグイン．
 
 ## 動作確認
 
-- [AviUtl ExEdit2 beta50](https://spring-fragrance.mints.ne.jp/aviutl/)
+- [AviUtl ExEdit2 beta51](https://spring-fragrance.mints.ne.jp/aviutl/)
 
 > [!CAUTION]
-> beta48以降必須．
+> beta51以降必須．
 
 ## 導入・更新・削除
 
@@ -57,10 +54,11 @@ AviUtl ExEdit2でLUTファイルを扱えるようにするプラグイン．
 
 初期ラベル: `色調整`
 
-以下の形式のLUTファイルを読み込み，画像の色を変えるフィルタ．
+以下の形式の LUT ファイルを読み込み，画像の色を変えるフィルタ．
 
 - Cube LUT Specification Version 1.0 に準拠した LUT ファイル (.cube)
 - Hald CLUT ファイル (.bmp, .png, .tiff, .tif)
+- Unreal Engine で用いられる Strip LUT ファイル (.bmp, .png, .tiff, .tif)
 
 読み込んだ LUT はファイルパスをキーとしてキャッシュを取るので， LUT に変更があった場合は `Reload LUT` または本体の`キャッシュを破棄`をクリックして再読み込みを行うこと．
 
@@ -70,64 +68,90 @@ AviUtl ExEdit2でLUTファイルを扱えるようにするプラグイン．
 
 - LUT File: LUT ファイルを指定する
 - Reload LUT: `LUT File` で指定した LUT を再読み込みする
-- Compositing::Blend Mode: 合成時のブレンドモード
-  - Normal: 通常
-  - Dissolve: ディザ合成
-  - Darken: 比較 (暗)
-  - Multiply: 乗算
-  - Color Burn: 焼き込み (カラー)
-  - Linear Burn: 焼き込み (リニア)
-  - Darker Color: カラー比較 (暗)
-  - Lighten: 比較 (明)
-  - Screen: スクリーン
-  - Color Dodge: 覆い焼き (カラー)
-  - Linear Dodge (Add): 覆い焼き (リニア) - 加算
-  - Lighter Color: カラー比較 (明)
-  - Overlay: オーバーレイ
-  - Soft Light: ソフトライト
-  - Hard Light: ハードライト
-  - Linear Light: リニアライト
-  - Vivid Light: ビビッドライト
-  - Pin Light: ピンライト
-  - Hard Mix: ハードミックス
-  - Difference: 差分
-  - Exclusion: 除外
-  - Subtract: 減算
-  - Divide: 除算
-  - Hue: 色相
-  - Saturation: 彩度
-  - Color: カラー
-  - Luminosity: 輝度
-- Compositing::Opacity: エフェクトの適用度合
-- Compositing::Clamp: 合成結果を `[0, 1]` にクランプする
 
-> [!NOTE]
-> - `Compositing::Clamp` にチェックがない場合，合成結果が `[0, 1]` の範囲を超えてしまうことがある．
-> - Hue, Saturation, Color, Luminosity は Photoshop で採用されている HSL をベースにしている．
-> - AviUtl の合成モードで陰影は焼き込み (リニア)，明暗はリニアライト，色差はカラーに対応する．
+- <details>
+  <summary>Compositing</summary>
 
-### HaldCLUT_K
+  - Compositing::Blend Mode: 合成時のブレンドモード
+    - Normal: 通常
+    - Dissolve: ディザ合成
+    - Darken: 比較 (暗)
+    - Multiply: 乗算
+    - Color Burn: 焼き込み (カラー)
+    - Linear Burn: 焼き込み (リニア)
+    - Darker Color: カラー比較 (暗)
+    - Lighten: 比較 (明)
+    - Screen: スクリーン
+    - Color Dodge: 覆い焼き (カラー)
+    - Linear Dodge (Add): 覆い焼き (リニア) - 加算
+    - Lighter Color: カラー比較 (明)
+    - Overlay: オーバーレイ
+    - Soft Light: ソフトライト
+    - Hard Light: ハードライト
+    - Linear Light: リニアライト
+    - Vivid Light: ビビッドライト
+    - Pin Light: ピンライト
+    - Hard Mix: ハードミックス
+    - Difference: 差分
+    - Exclusion: 除外
+    - Subtract: 減算
+    - Divide: 除算
+    - Hue: 色相
+    - Saturation: 彩度
+    - Color: カラー
+    - Luminosity: 輝度
+  - Compositing::Opacity: エフェクトの適用度合
+  - Compositing::Clamp: 合成結果を `[0, 1]` にクランプする
 
-Hald CLUTを生成するメディアオブジェクト．
+  > [!NOTE]
+  > - `Compositing::Clamp` にチェックがない場合，合成結果が `[0, 1]` の範囲を超えてしまうことがある．
+  > - Hue, Saturation, Color, Luminosity は Photoshop で採用されている HSL をベースにしている．
+  > - AviUtl の合成モードで陰影は焼き込み (リニア)，明暗はリニアライト，色差はカラーに対応する．
+
+  </details>
+
+### NeutralLUT_K
+
+Hald CLUT および Strip LUT を描画する．
 
 #### パラメータ
 
-- Level: Identity Hald CLUT のレベルを指定する (Level の 2 乗が Cube LUT の `LUT_3D_SIZE` となり， Level の 3 乗が Hald CLUT の辺の長さとなる)
-- Resize Scene to LUT: Hald CLUT の画像サイズに合わせてシーンサイズを変更する (いずれ削除する可能性がある)
+- LUT Format
+  - Hald: Hald CLUT
+  - Strip: Strip LUT (Unreal Engine)
 
-> [!NOTE]
-> beta50ではシーンサイズの変更はUndoに対応していない．
+- <details>
+  <summary>Hald Settings</summary>
+
+  - Hald::Level: Identity Hald CLUT のレベルを指定する (Level の 2 乗が Cube LUT の `LUT_3D_SIZE` となり， Level の 3 乗が Hald CLUT の辺の長さとなる)
+
+  </details>
+
+- <details>
+  <summary>Strip Settings</summary>
+
+  - Strip::Size: Strip LUT のサイズを指定する
+
+  </details>
+
+- <details>
+  <summary>Visibility</summary>
+
+  - Visibility::Show In::Viewports: プレビューで描画する
+  - Visibility::Show In::Renders: レンダリングで描画する
+
+  </details>
 
 ### LUT ファイル出力
 
 Cube LUT (`.cube`) または Hald CLUT (16bit RGB PNG `.png`) を出力する出力プラグイン．
 
-シーン全体を Hald CLUT として読み込み変換を行う．シーンサイズが Hald CLUT のサイズと一致しない場合は周りの透明部分をカットする．
+シーン全体を Hald CLUT または Strip LUT として読み込み変換を行う．シーンサイズが Hald CLUT または Strip LUT のサイズと一致しない場合は周りの透明部分をカットする．
 
 以下の手順でオリジナルLUTファイルを作成できる．
 
-1. 画像の色調補正を行う．(複数レイヤーを使用してよい)
-2. 見た目を整えた後，画像を `HaldCLUT_K` に差し替える．
+1. 画像に `NeutralLUT_K` を追加する．
+2. 画像の色調補正を行う．(複数レイヤーを使用してよい)
 3. `ファイル/ファイル出力/LUT ファイル出力`で Cube LUT または Hald CLUT としてエクスポートする．
 
 出力したCube LUTファイルのサンプルを [samples/](./samples/) に置いている．

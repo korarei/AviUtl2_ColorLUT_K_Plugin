@@ -5,7 +5,7 @@ requires-astra = ">=0.6.2"
 name = "ColorLUT_K"
 version = "0.1.0"
 author = "Korarei"
-requires-aviutl2 = "2004800"
+requires-aviutl2 = "2005100"
 
 [build]
 [[build.plugins]]
@@ -44,10 +44,7 @@ description = """
 フィルタ
 
 - 色調整\\ColorLUT_K: LUT ファイルを用いた色調補正
-
-メディアオブジェクト
-
-- LUT\\HaldCLUT_K: Hald CLUT (画像形式のLUT)
+- 加工\\NeutralLUT_K: Neutral LUT (identity transform) を描画する
 
 ファイルドロップ
 
