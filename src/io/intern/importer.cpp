@@ -39,9 +39,9 @@ void OnDrop(EDIT_SECTION* edit, const wchar_t* file) {
         "LUT File={}\n"
         "Reload LUT=\n"
         "Compositing.hide=1\n"
-        "Blend Mode=Normal\n"
-        "Opacity=100.00\n"
-        "Clamp=0\n",
+        "Compositing::Blend Mode=Normal\n"
+        "Compositing::Opacity=100.00\n"
+        "Compositing::Clamp=0\n",
         string::AsString(path.u8string()));
 
     int layer, frame;
