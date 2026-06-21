@@ -89,8 +89,9 @@ INT_PTR CALLBACK DlgProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM) {
             if (LOWORD(wp) == IDOK) {
                 const int len = GetWindowTextLength(GetDlgItem(hwnd, IDC_EXPORT_TITLE_EDIT));
 
-                std::wstring title(len, L'\0');
+                std::wstring title(len + 1, L'\0');
                 GetDlgItemText(hwnd, IDC_EXPORT_TITLE_EDIT, title.data(), len + 1);
+                title.resize(len);
 
                 std::erase_if(title, [](wchar_t c) { return std::iswcntrl(c); });
 

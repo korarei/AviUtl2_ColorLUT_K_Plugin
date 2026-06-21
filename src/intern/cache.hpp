@@ -97,9 +97,11 @@ class Cache {
 
     void Release(int64_t id) {
         if (auto node = id_to_cache_.extract(id)) {
-            const auto& entry = node.mapped();
+            auto& entry = node.mapped();
             if (entry != nullptr) {
-                if (auto it = name_to_cache_.find(entry->name); it != name_to_cache_.end() && it->second.expired()) {
+                const auto name = entry->name;
+                entry.reset();
+                if (auto it = name_to_cache_.find(name); it != name_to_cache_.end() && it->second.expired()) {
                     name_to_cache_.erase(it);
                 }
             }
