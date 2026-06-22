@@ -38,7 +38,6 @@ using StripLUT = lut::StripLUT;
 
 struct DialogData {
     std::mutex mtx;
-    std::wstring metadata{};
     std::wstring title{};
 };
 
@@ -74,10 +73,6 @@ INT_PTR CALLBACK DlgProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM) {
         case WM_INITDIALOG: {
             {
                 std::lock_guard<std::mutex> lock(dialog_data.mtx);
-
-                if (dialog_data.title.empty()) {
-                    dialog_data.title = L"${STEM}";
-                }
 
                 SetDlgItemText(hwnd, IDC_EXPORT_TITLE_EDIT, dialog_data.title.c_str());
             }
@@ -269,12 +264,14 @@ bool ExportLUT(OUTPUT_INFO* ctx) {
     }
 }
 
-const wchar_t* Metadata() {
+std::wstring& Metadata() {
+    static std::wstring metadata{};
+
     std::lock_guard<std::mutex> lock(dialog_data.mtx);
 
-    dialog_data.metadata = std::format(L"TITLE: {} / DOMAIN_MAX: 1.0 / DOMAIN_MIN: 0.0", dialog_data.title);
+    metadata = std::format(L"TITLE: {} / DOMAIN_MAX: 1.0 / DOMAIN_MIN: 0.0", dialog_data.title);
 
-    return dialog_data.metadata.c_str();
+    return metadata;
 }
 
 bool LoadConfig(PROJECT_FILE* ctx) {
@@ -303,28 +300,35 @@ bool SaveConfig(PROJECT_FILE* ctx) {
     return true;
 }
 
-constinit OUTPUT_PLUGIN_TABLE info = {
+OUTPUT_PLUGIN_TABLE info = {
     .flag = OUTPUT_PLUGIN_TABLE::FLAG_IMAGE | OUTPUT_PLUGIN_TABLE::FLAG_PROJECT_CONFIG,
     .name = L"LUT ファイル出力",
     .filefilter = L"Cube LUT File (*.cube)\0*.cube\0Hald CLUT File (*.png)\0*.png\0\0",
     .information = L"LUT ファイル出力 v" VERSION L" by Korarei",
     .func_output = ExportLUT,
     .func_config = ShowExportDialog,
-    .func_get_config_text = Metadata,
+    .func_get_config_text = []() { return Metadata().c_str(); },
     .func_load_project_config = LoadConfig,
     .func_save_project_config = SaveConfig,
 };
 }  // namespace
 
 namespace lut::io::exporter {
-void Init(HOST_APP_TABLE* host) { host->register_output_plugin(&info); }
+void Init(HOST_APP_TABLE* host) {
+    host->register_output_plugin(&info);
+
+    std::lock_guard<std::mutex> lock(dialog_data.mtx);
+
+    if (dialog_data.title.empty()) {
+        dialog_data.title = L"${STEM}";
+    }
+}
 
 void Deinit() {
-    {
-        std::lock_guard<std::mutex> lock(dialog_data.mtx);
+    std::wstring{}.swap(Metadata());
 
-        std::wstring{}.swap(dialog_data.metadata);
-        std::wstring{}.swap(dialog_data.title);
-    }
+    std::lock_guard<std::mutex> lock(dialog_data.mtx);
+
+    std::wstring{}.swap(dialog_data.title);
 }
 }  // namespace lut::io::exporter
